@@ -1,6 +1,6 @@
 #include "sdl_timer.h"
 
-#include <SDL2/SDL.h>
+#include <SDL.h>
 
 #include "common.h"
 

@@ -1,6 +1,6 @@
 CXX=g++
 RM=rm -f
-SDL2CFLAGS=-I/opt/homebrew/include -D_THREAD_SAFE
+SDL2CFLAGS=-I/opt/homebrew/include/SDL2 -D_THREAD_SAFE
 CXXFLAGS=-O2 -c --std=c++14 -Wall $(SDL2CFLAGS)
 
 # Load dynamic libs here

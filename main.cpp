@@ -5,7 +5,7 @@
 #include <mutex>
 #include <thread>
 
-#include <SDL2/SDL.h>
+#include <SDL.h>
 
 #include "image.h"
 #include "cpu_chip8.h"
