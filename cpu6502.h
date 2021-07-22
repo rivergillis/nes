@@ -35,5 +35,29 @@ class Cpu6502 {
 // Indirect addressing relies on zero/direct page at $0000-$00FF.
 // Stack instructions always access stack page at $0100-$01FF.
 
+// All addressing 16-bit unless noted.
+// Indexed Addressing: 
+// Uses the X or Y register to help determine address. 6 main indexed addr modes:
+//  +: add a cycle for writes or for page wrapping on reads.
+// d,x - zero page indexed - 4 cycles
+//  val = PEEK((arg + X) % 256)
+// d,y - zero page indexed - 4 cycles
+//  val = PEEK((arg + Y) % 256)
+// a,x - absolute indexed - 4+ cycles
+//  val = PEEK(arg + X)
+// a,y - absolute indexed - 4+ cycles
+//  val = PEEK(arg + Y)
+// (d,x) - indirect indexed - 6 cycles
+//  val = PEEK(PEEK((arg + X) % 256) + PEEK((arg + X + 1) % 256) * 256)
+// (d),y - indirect indexed - 5+ cycles
+//  val = PEEK(PEEK(arg) + PEEK((arg + 1) % 256) * 256 + Y)
+// 
+// Non-indexed:
+// A - Use the accumulator directly
+// #v - immediate byte
+// d - zero page. Fetch 8-bit val from zero page.
+// a - absolute. Full 16-bit addr to identify location.
+// label - relative. branch uses signed 8-bit relative offset.
+// (a) - indirect. JMP can fetch 16-bit val from addr.
 
 #endif
