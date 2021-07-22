@@ -6,8 +6,18 @@ class Cpu6502 {
 
 };
 
-// notes: 8-bit addressing
+// notes:
 // NES lacks decimal mode.
+// little-endian - lsbyte first in memory
+// registers:
+// A: byte-wide, supports using the status register for carrying, overflow detection, etc
+// X,Y: byte-wide indexes for several addressing modes.
+//  only X can be used to get a copy of the stack pointer or change its value 
+// PC: 2-bytes. Points to next instr. PC is modified automatically during
+//  instr execution. Interrupts, jumps, branches also modify.
+// S: byte-wide stack pointer. Points to the low 8 bits (00-FF) of the next free location
+//  on the stack at $0100 - $01FF. Decr on push, incr on pull. No overflow detection.
+// P: 6 bits but byte-wide status register. C,Z,I,D (no effect),V,N,B
 
 // mem notes:
 // $0000-$07FF SIZE $0800 : 2KB internal RAM 
