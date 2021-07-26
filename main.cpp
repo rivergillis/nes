@@ -5,7 +5,7 @@
 
 // doc: https://www.qmtpro.com/~nes/misc/nestest.txt
 // good log: https://www.qmtpro.com/~nes/misc/nestest.log
-// start execution at $C000
+// start execution at $0C000
 const std::string kTestRomPath = "/Users/river/code/nes/nestest.nes";
 
 void Run() {

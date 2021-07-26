@@ -1,8 +1,23 @@
 #ifndef NES_CPU6502_H_
 #define NES_CPU6502_H_
 
+#include "common.h"
+#include "mapper.h"
+
 // Implements the NES's MOS 6502 CPU.
 class Cpu6502 {
+  public:
+    Cpu6502(const std::string& rom_path);
+
+  private:
+    // 2kb of internal memory
+    uint8_t internal_ram_[2048];
+
+    // Raw binary data from the loaded rom file.
+    uint8_t* rom_file_binary_ = nullptr;
+
+    // TODO: Emulate NROM (mapper 0) and go from there...
+    std::unique_ptr<Mapper> mapper_;
 
 };
 
