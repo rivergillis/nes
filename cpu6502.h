@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "mapper.h"
+#include "memory_view.h"
 
 // Implements the NES's MOS 6502 CPU.
 class Cpu6502 {
@@ -13,11 +14,11 @@ class Cpu6502 {
     // 2kb of internal memory
     uint8_t internal_ram_[2048];
 
-    // Raw binary data from the loaded rom file.
-    uint8_t* rom_file_binary_ = nullptr;
-
     // Todo pass ptr to this and internal ram into a MemoryView class
     std::unique_ptr<Mapper> mapper_;
+
+    // NOTE: This needs to be last
+    std::unique_ptr<MemoryView> memory_view_;
 
 };
 

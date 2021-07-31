@@ -7,8 +7,8 @@ CXXFLAGS=-O2 -c --std=c++14 -Wall $(SDL2CFLAGS) -I$(INC_DIR)
 # Load dynamic libs here
 LDFLAGS=-L/opt/homebrew/lib -lSDL2
 
-chip8: main.o image.o cpu_chip8.o sdl_viewer.o sdl_timer.o cpu6502.o mappers/nrom_mapper.o
-	$(CXX) $(LDFLAGS) -o chip8 main.o image.o cpu_chip8.o sdl_viewer.o sdl_timer.o cpu6502.o mappers/nrom_mapper.o
+chip8: main.o image.o cpu_chip8.o sdl_viewer.o sdl_timer.o cpu6502.o mappers/nrom_mapper.o memory_view.o
+	$(CXX) $(LDFLAGS) -o chip8 main.o image.o cpu_chip8.o sdl_viewer.o sdl_timer.o cpu6502.o mappers/nrom_mapper.o memory_view.o
 
 main.o: main.cpp
 	$(CXX) $(CXXFLAGS) main.cpp
@@ -28,6 +28,8 @@ sdl_timer.o: sdl_timer.cpp sdl_timer.h
 cpu6502.o: cpu6502.cpp cpu6502.h
 	$(CXX) $(CXXFLAGS) cpu6502.cpp
 
+memory_view.o: memory_view.cpp memory_view.h
+	$(CXX) $(CXXFLAGS) memory_view.cpp
 
 SUBDIR = mappers
 # .PHONY: mappers_dir
