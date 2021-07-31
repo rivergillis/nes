@@ -16,7 +16,7 @@ class Cpu6502 {
     // Raw binary data from the loaded rom file.
     uint8_t* rom_file_binary_ = nullptr;
 
-    // TODO: Emulate NROM (mapper 0) and go from there...
+    // Todo pass ptr to this and internal ram into a MemoryView class
     std::unique_ptr<Mapper> mapper_;
 
 };

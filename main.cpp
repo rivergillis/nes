@@ -15,9 +15,9 @@ void Run() {
 int main(int argc, char* args[]) {
   try {
     Run();
-    std::cout << "Exit main() success";
+    std::cout << "Exit main() success" << std::endl;
   } catch (const std::exception& e) {
-    std::cerr << "ERROR: " << e.what();
+    std::cerr << "ERROR: " << e.what() << std::endl;
     return 1;
   }
 }

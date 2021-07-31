@@ -12,7 +12,7 @@ class Mapper {
 
     ::MapperId MapperId() { return mapper_id_; }
 
-    ~Mapper() {
+    virtual ~Mapper() {
       free(prg_rom_);
       free(prg_ram_);
     }
