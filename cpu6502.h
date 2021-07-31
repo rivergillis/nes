@@ -8,9 +8,13 @@
 // Implements the NES's MOS 6502 CPU.
 class Cpu6502 {
   public:
-    Cpu6502(const std::string& rom_path);
+    Cpu6502(const std::string& file_path);
 
   private:
+    void LoadCartrtidgeFile(const std::string& file_path);
+    // Loads an iNES 1.0 file
+    void LoadNes1File(std::vector<uint8_t> bytes);
+
     // 2kb of internal memory
     uint8_t internal_ram_[2048];
 
