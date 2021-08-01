@@ -16,6 +16,8 @@ class Cpu6502 {
     // Loads an iNES 1.0 file
     void LoadNes1File(std::vector<uint8_t> bytes);
 
+    void DbgMem();
+
     // 2kb of internal memory
     uint8_t internal_ram_[2048];
 

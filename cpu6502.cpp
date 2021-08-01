@@ -25,6 +25,8 @@ Cpu6502::Cpu6502(const std::string& file_path) {
   assert(ppu_);
   assert(mapper_);
   assert(memory_view_);
+  // DbgMem();
+  // ppu_->DbgChr();
 }
 
 void Cpu6502::LoadCartrtidgeFile(const std::string& file_path) {
@@ -91,6 +93,15 @@ void Cpu6502::LoadNes1File(std::vector<uint8_t> bytes) {
     ppu_ = std::make_unique<Ppu>(nullptr, 0);
   }
 
-  // memcpy(prg_rom_dst, bytes.data() + 16, prg_rom_size);
   mapper_ = std::make_unique<NromMapper>(bytes.data() + 16, prg_rom_size);
+}
+
+void Cpu6502::DbgMem() {
+  for (int i = 0x6000; i <= 0xFFFF; i += 0x10) {
+    DBG("\nCPU[%03X]: ", i);
+    for (int j = 0; j < 0x10; j++) {
+      DBG("%#04x ", mapper_->Get(i + j));
+    }
+  }
+  DBG("\n");
 }
