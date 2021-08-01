@@ -7,11 +7,13 @@
 
 class NromMapper : public Mapper {
   public:
-    // TODO: Just take in prg_rom size
-    NromMapper(::MapperId type);
+    NromMapper(uint8_t* prg_rom, size_t prg_rom_size);
 
     uint8_t Get(uint16_t addr);
     void Set(uint16_t addr, uint8_t val);
+
+  private:
+    size_t prg_rom_size_;
 };
 
 #endif

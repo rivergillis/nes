@@ -2,28 +2,26 @@
 
 #include "mapper_id.h"
 
-  // public:
-  //   NromMapper(::MapperId type);
+namespace { 
+void DBG(const char* str, ...) {
+  #ifdef DEBUG
+  va_list arglist;
+  va_start(arglist, str);
+  vprintf(str, arglist);
+  va_end(arglist);
+  #endif
+}
+}
 
-  //   uint8_t Get(uint16_t addr);
-  //   void Set(uint16_t addr, uint8_t val);
-
-  //   ::MapperId MapperId() const;
-  // private:
-  //   const ::MapperId type_;
-
-NromMapper::NromMapper(::MapperId type) {
-  mapper_id_ = type;
-
-  if (mapper_id_ == MapperId::kNrom128) {
-    prg_rom_ = (uint8_t*)calloc(0x4000, sizeof(uint8_t)); // 16k
-  } else if (mapper_id_ == MapperId::kNrom256) {
-    prg_rom_ = (uint8_t*)calloc(0x8000, sizeof(uint8_t)); // 32k
-  } else {
-    throw std::runtime_error("Invalid mapper for nrom");
-  }
+NromMapper::NromMapper(uint8_t* prg_rom, size_t prg_rom_size) {
+  mapper_id_ = MapperId::kNrom;
+  assert(prg_rom_size == 0x4000 || prg_rom_size == 0x8000);
+  prg_rom_size_ = prg_rom_size;
+  prg_rom_ = (uint8_t*)malloc(prg_rom_size_ * sizeof(uint8_t));
+  memcpy(prg_rom_, prg_rom, prg_rom_size_);
 
   prg_ram_ = (uint8_t*)calloc(0x2000, sizeof(uint8_t)); // 8k
+  DBG("Created NROM mapper with %d byte PRG_ROM and 8k PRG_RAM\n", prg_rom_size_);
 }
 
 uint8_t NromMapper::Get(uint16_t addr) {
@@ -35,8 +33,8 @@ uint8_t NromMapper::Get(uint16_t addr) {
   } else if (addr < 0xC000) {
     return prg_rom_[addr - 0x8000];
   } else {
-    if (mapper_id_ == MapperId::kNrom128) {
-      // Provide a mirror
+    if (prg_rom_size_ == 0x4000) {
+      // Provide a mirror for NROM-128
       return prg_rom_[addr - 0xC000];
     } else {
       return prg_rom_[addr - 0x8000];

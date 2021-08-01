@@ -21,7 +21,7 @@ void DBG(const char* str, ...) {
 
 Cpu6502::Cpu6502(const std::string& file_path) {
   LoadCartrtidgeFile(file_path);
-  memory_view_ = std::make_unique<MemoryView>(internal_ram_, mapper_.get());
+  memory_view_ = std::make_unique<MemoryView>(internal_ram_, ppu_.get(), mapper_.get());
   assert(ppu_);
   assert(mapper_);
   assert(memory_view_);
@@ -92,5 +92,5 @@ void Cpu6502::LoadNes1File(std::vector<uint8_t> bytes) {
   }
 
   // memcpy(prg_rom_dst, bytes.data() + 16, prg_rom_size);
-  mapper_ = std::make_unique<NromMapper>(MapperId::kNrom256);
+  mapper_ = std::make_unique<NromMapper>(bytes.data() + 16, prg_rom_size);
 }
