@@ -5,6 +5,7 @@
 #include "common.h"
 #include "mappers/nrom_mapper.h"
 #include "mapper_id.h"
+#include "ppu.h"
 #include "memory_view.h"
 
 namespace { 
@@ -19,10 +20,11 @@ void DBG(const char* str, ...) {
 }
 
 Cpu6502::Cpu6502(const std::string& file_path) {
-  // LoadRom
-  mapper_ = std::make_unique<NromMapper>(MapperId::kNrom256);
-  memory_view_ = std::make_unique<MemoryView>(internal_ram_, mapper_.get());
   LoadCartrtidgeFile(file_path);
+  memory_view_ = std::make_unique<MemoryView>(internal_ram_, mapper_.get());
+  assert(ppu_);
+  assert(mapper_);
+  assert(memory_view_);
 }
 
 void Cpu6502::LoadCartrtidgeFile(const std::string& file_path) {
@@ -67,6 +69,10 @@ void Cpu6502::LoadNes1File(std::vector<uint8_t> bytes) {
   uint32_t prg_rom_size = static_cast<uint32_t>(bytes[4]) * 0x4000;
   uint32_t chr_rom_size = static_cast<uint32_t>(bytes[5]) * 0x2000;
 
+  if (bytes.size() < (prg_rom_size + chr_rom_size + 16)) {
+    throw std::runtime_error("Rom file size less than header suggests.");
+  }
+
   // TODO: Handle flags as needed.
   uint8_t flags6 = bytes[6];  // msb are lower nybble of mapper num
   if (flags6 & 0b0010'0000) {
@@ -79,5 +85,12 @@ void Cpu6502::LoadNes1File(std::vector<uint8_t> bytes) {
   DBG("Mapper ID %d PRG_ROM sz %d CHAR_ROM sz %d PRG_RAM sz %d\n",
       mapper_number, prg_rom_size, chr_rom_size, prg_ram_size);
   
-  // Next: Read prg and chr rom
+  if (chr_rom_size > 0) {
+    ppu_ = std::make_unique<Ppu>(bytes.data() + 16 + prg_rom_size, chr_rom_size);
+  } else {
+    ppu_ = std::make_unique<Ppu>(nullptr, 0);
+  }
+
+  // memcpy(prg_rom_dst, bytes.data() + 16, prg_rom_size);
+  mapper_ = std::make_unique<NromMapper>(MapperId::kNrom256);
 }

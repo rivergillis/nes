@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "mapper.h"
+#include "ppu.h"
 #include "memory_view.h"
 
 // Implements the NES's MOS 6502 CPU.
@@ -17,6 +18,8 @@ class Cpu6502 {
 
     // 2kb of internal memory
     uint8_t internal_ram_[2048];
+
+    std::unique_ptr<Ppu> ppu_;
 
     // Todo pass ptr to this and internal ram into a MemoryView class
     std::unique_ptr<Mapper> mapper_;
@@ -79,5 +82,9 @@ class Cpu6502 {
 // a - absolute. Full 16-bit addr to identify location.
 // label - relative. branch uses signed 8-bit relative offset.
 // (a) - indirect. JMP can fetch 16-bit val from addr.
+
+
+// PPU has a $0000 - $3FFF addr space. Can access via CPU registers 2006 and 2007
+// PPU/$0000 - PPU/$1FFF is usually CHR-ROM or CHR-RAM, maybe with bank switching
 
 #endif
