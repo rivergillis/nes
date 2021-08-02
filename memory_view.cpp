@@ -15,6 +15,10 @@ uint8_t MemoryView::Get(uint16_t addr) {
   }
 }
 
+uint16_t MemoryView::Get16(uint16_t addr) {
+  return static_cast<uint16_t>(Get(addr + 1)) << 8 | Get(addr);
+}
+
 void MemoryView::Set(uint16_t addr, uint8_t val) {
   if (addr < 0x2000) {
     system_ram_[addr % 0x800] = val;

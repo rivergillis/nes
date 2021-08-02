@@ -20,13 +20,25 @@ void DBG(const char* str, ...) {
 }
 
 Cpu6502::Cpu6502(const std::string& file_path) {
+  Reset(file_path);
+  DBG("NES ready. PC: %#04x\n", program_counter_);
+}
+
+void Cpu6502::Reset(const std::string& file_path) {
   LoadCartrtidgeFile(file_path);
   memory_view_ = std::make_unique<MemoryView>(internal_ram_, ppu_.get(), mapper_.get());
   assert(ppu_);
   assert(mapper_);
   assert(memory_view_);
   // DbgMem();
-  // ppu_->DbgChr();
+
+  // nesdev should start at 0xC000 till I get indput working
+  if (file_path == "/Users/river/code/nes/roms/nestest.nes") {
+    program_counter_ = 0xC000;
+  } else {
+    program_counter_ =  memory_view_->Get16(0xFFFC);
+  }
+
 }
 
 void Cpu6502::LoadCartrtidgeFile(const std::string& file_path) {

@@ -12,11 +12,18 @@ class Cpu6502 {
     Cpu6502(const std::string& file_path);
 
   private:
+    // Resets the CPU state, loads the cartridge,
+    // sets the next instruction baded on reset vector.
+    void Reset(const std::string& file_path);
+
     void LoadCartrtidgeFile(const std::string& file_path);
     // Loads an iNES 1.0 file
     void LoadNes1File(std::vector<uint8_t> bytes);
 
     void DbgMem();
+
+    // Points to next address to execute
+    uint16_t program_counter_ = 0;
 
     // 2kb of internal memory
     uint8_t internal_ram_[2048];
