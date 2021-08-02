@@ -25,8 +25,7 @@ Cpu6502::Cpu6502(const std::string& file_path) {
 }
 
 void Cpu6502::Next() {
-  uint8_t opcode = memory_view_->Get(program_counter_);
-  program_counter_++;
+  uint8_t opcode = memory_view_->Get(program_counter_++);
   // TODO: One big switch statement....
   switch (opcode) {
     case 0x69:
@@ -139,13 +138,45 @@ void Cpu6502::DbgMem() {
 }
 
 void Cpu6502::ADC(uint8_t opcode) {
-  if (opcode == 0x69) { // immediate
-    uint8_t imm = memory_view_->Get(program_counter_);
-    program_counter_++;
-    a_ += imm;
-  } else if (opcode == 0x65) {  // zero page
-
+  uint8_t val = 0;
+  if (opcode == 0x61) { // indirect,X
+    // Get ZP, add X_ to LSB, then read full addr
+    uint16_t zero_addr = memory_view_->Get(program_counter_++);
+    zero_addr = (zero_addr + x_) % 0xFF;
+    uint16_t addr = memory_view_->Get16(zero_addr);
+    val = memory_view_->Get(addr);
+  } if (opcode == 0x65) { // zero page
+    uint16_t addr = memory_view_->Get(program_counter_++);
+    val = memory_view_->Get(addr);
+  } else if (opcode == 0x69) {  // immediate
+    val = memory_view_->Get(program_counter_++);
+  } else if (opcode == 0x6D) {  // absolute
+    uint16_t addr = memory_view_->Get16(program_counter_);
+    program_counter_ += 2;
+    val = memory_view_->Get(addr);
+  } else if (opcode == 0x71) {  // indirect,Y
+    // get ZP addr, then read full addr from it and add Y
+    uint16_t zero_addr = memory_view_->Get(program_counter_++);
+    uint16_t addr = memory_view_->Get16(zero_addr);
+    addr += y_;
+    val = memory_view_->Get(addr);
+  } else if (opcode == 0x75) {  // zero page,X
+    uint16_t addr = memory_view_->Get(program_counter_++);
+    addr = (addr + x_) % 0xFF;
+    val = memory_view_->Get(addr);
+  } else if (opcode == 0x79) {  // absolute,Y
+    uint16_t addr = memory_view_->Get16(program_counter_);
+    program_counter_ += 2;
+    addr += y_;
+    val = memory_view_->Get(addr);
+  } else if (opcode == 0x7D) { // absolute,X
+    uint16_t addr = memory_view_->Get16(program_counter_);
+    program_counter_ += 2;
+    addr += x_;
+    val = memory_view_->Get(addr);
   } else {
     throw std::runtime_error("Bad opcode on ADC");
   }
+  a_ += val;
+  // todo set flags
 }
