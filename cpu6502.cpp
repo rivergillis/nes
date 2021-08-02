@@ -24,6 +24,26 @@ Cpu6502::Cpu6502(const std::string& file_path) {
   DBG("NES ready. PC: %#04x\n", program_counter_);
 }
 
+void Cpu6502::Next() {
+  uint8_t opcode = memory_view_->Get(program_counter_);
+  program_counter_++;
+  // TODO: One big switch statement....
+  switch (opcode) {
+    case 0x69:
+    case 0x65:
+    case 0x75:
+    case 0x6D:
+    case 0x7D:
+    case 0x79:
+    case 0x61:
+    case 0x71:
+      ADC(opcode);
+    default:
+      DBG("OP %#02x.... ", opcode);
+      throw std::runtime_error("Unimplemented opcode.");
+  }
+}
+
 void Cpu6502::Reset(const std::string& file_path) {
   LoadCartrtidgeFile(file_path);
   memory_view_ = std::make_unique<MemoryView>(internal_ram_, ppu_.get(), mapper_.get());
@@ -116,4 +136,16 @@ void Cpu6502::DbgMem() {
     }
   }
   DBG("\n");
+}
+
+void Cpu6502::ADC(uint8_t opcode) {
+  if (opcode == 0x69) { // immediate
+    uint8_t imm = memory_view_->Get(program_counter_);
+    program_counter_++;
+    a_ += imm;
+  } else if (opcode == 0x65) {  // zero page
+
+  } else {
+    throw std::runtime_error("Bad opcode on ADC");
+  }
 }

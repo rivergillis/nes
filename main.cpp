@@ -10,6 +10,9 @@ const std::string kTestRomPath = "/Users/river/code/nes/roms/nestest.nes";
 
 void Run() {
   Cpu6502 cpu(kTestRomPath);
+  for (int i = 0; i < 100; i++) {
+    cpu.Next();
+  }
 }
 
 int main(int argc, char* args[]) {

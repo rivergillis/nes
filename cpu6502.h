@@ -11,6 +11,9 @@ class Cpu6502 {
   public:
     Cpu6502(const std::string& file_path);
 
+    // Executes the next instruction.
+    void Next();
+
   private:
     // Resets the CPU state, loads the cartridge,
     // sets the next instruction baded on reset vector.
@@ -21,6 +24,11 @@ class Cpu6502 {
     void LoadNes1File(std::vector<uint8_t> bytes);
 
     void DbgMem();
+
+    /// INSTRUCTIONS
+
+    // Add with Carry
+    void ADC(uint8_t op);
 
     // Points to next address to execute
     uint16_t program_counter_ = 0;
@@ -35,6 +43,13 @@ class Cpu6502 {
 
     // NOTE: This needs to be last
     std::unique_ptr<MemoryView> memory_view_;
+
+    /// Registers
+    uint8_t a_;
+    uint8_t x_;
+    uint8_t y_;
+    uint8_t p_;
+    uint8_t stack_pointer_;
 
 };
 
