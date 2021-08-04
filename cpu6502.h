@@ -12,7 +12,7 @@ class Cpu6502 {
     Cpu6502(const std::string& file_path);
 
     // Executes the next instruction.
-    void Next();
+    void RunCycle();
 
   private:
     // Resets the CPU state, loads the cartridge,
@@ -29,6 +29,17 @@ class Cpu6502 {
     };
     bool GetFlag(Flag flag);
     void SetFlag(Flag flag, bool val);
+
+    /// Addressing modes -- affects program_counter
+    uint8_t NextImmediate();
+    uint8_t NextZeroPage();
+    uint8_t NextZeroPageX();
+    uint8_t NextZeroPageY();
+    uint8_t NextAbsolute();
+    uint8_t NextAbsoluteX();
+    uint8_t NextAbsoluteY();
+    uint8_t NextIndirectX();
+    uint8_t NextIndirectY();
 
     void DbgMem();
 

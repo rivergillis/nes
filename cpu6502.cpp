@@ -24,7 +24,7 @@ Cpu6502::Cpu6502(const std::string& file_path) {
   DBG("NES ready. PC: %#04x\n", program_counter_);
 }
 
-void Cpu6502::Next() {
+void Cpu6502::RunCycle() {
   uint8_t opcode = memory_view_->Get(program_counter_++);
   // TODO: One big switch statement....
   switch (opcode) {
@@ -141,6 +141,55 @@ void Cpu6502::SetFlag(Cpu6502::Flag flag, bool val) {
 
 }
 
+uint8_t Cpu6502::NextImmediate() {
+  return memory_view_->Get(program_counter_++);
+}
+uint8_t Cpu6502::NextZeroPage() {
+  uint16_t addr = memory_view_->Get(program_counter_++);
+  return memory_view_->Get(addr);
+}
+uint8_t Cpu6502::NextZeroPageX() {
+  uint16_t addr = memory_view_->Get(program_counter_++);
+  addr = (addr + x_) % 0xFF;  // Add X to LSB of ZP
+  return memory_view_->Get(addr);
+}
+uint8_t Cpu6502::NextZeroPageY() {
+  uint16_t addr = memory_view_->Get(program_counter_++);
+  addr = (addr + y_) % 0xFF;  // Add Y to LSB of ZP
+  return memory_view_->Get(addr);
+}
+uint8_t Cpu6502::NextAbsolute() {
+  uint16_t addr = memory_view_->Get16(program_counter_);
+  program_counter_ += 2;
+  return memory_view_->Get(addr);
+}
+uint8_t Cpu6502::NextAbsoluteX() {
+  uint16_t addr = memory_view_->Get16(program_counter_);
+  program_counter_ += 2;
+  addr += x_;
+  return memory_view_->Get(addr);
+}
+uint8_t Cpu6502::NextAbsoluteY() {
+  uint16_t addr = memory_view_->Get16(program_counter_);
+  program_counter_ += 2;
+  addr += y_;
+  return memory_view_->Get(addr);
+}
+uint8_t Cpu6502::NextIndirectX() {
+  // Get ZP, add X_ to LSB, then read full addr
+  uint16_t zero_addr = memory_view_->Get(program_counter_++);
+  zero_addr = (zero_addr + x_) % 0xFF;
+  uint16_t addr = memory_view_->Get16(zero_addr);
+  return memory_view_->Get(addr);
+}
+uint8_t Cpu6502::NextIndirectY() {
+  // get ZP addr, then read full addr from it and add Y
+  uint16_t zero_addr = memory_view_->Get(program_counter_++);
+  uint16_t addr = memory_view_->Get16(zero_addr);
+  addr += y_;
+  return memory_view_->Get(addr);
+}
+
 void Cpu6502::DbgMem() {
   for (int i = 0x6000; i <= 0xFFFF; i += 0x10) {
     DBG("\nCPU[%03X]: ", i);
@@ -153,41 +202,22 @@ void Cpu6502::DbgMem() {
 
 void Cpu6502::ADC(uint8_t opcode) {
   uint8_t val = 0;
-  if (opcode == 0x61) { // indirect,X
-    // Get ZP, add X_ to LSB, then read full addr
-    uint16_t zero_addr = memory_view_->Get(program_counter_++);
-    zero_addr = (zero_addr + x_) % 0xFF;
-    uint16_t addr = memory_view_->Get16(zero_addr);
-    val = memory_view_->Get(addr);
-  } if (opcode == 0x65) { // zero page
-    uint16_t addr = memory_view_->Get(program_counter_++);
-    val = memory_view_->Get(addr);
-  } else if (opcode == 0x69) {  // immediate
-    val = memory_view_->Get(program_counter_++);
-  } else if (opcode == 0x6D) {  // absolute
-    uint16_t addr = memory_view_->Get16(program_counter_);
-    program_counter_ += 2;
-    val = memory_view_->Get(addr);
-  } else if (opcode == 0x71) {  // indirect,Y
-    // get ZP addr, then read full addr from it and add Y
-    uint16_t zero_addr = memory_view_->Get(program_counter_++);
-    uint16_t addr = memory_view_->Get16(zero_addr);
-    addr += y_;
-    val = memory_view_->Get(addr);
-  } else if (opcode == 0x75) {  // zero page,X
-    uint16_t addr = memory_view_->Get(program_counter_++);
-    addr = (addr + x_) % 0xFF;
-    val = memory_view_->Get(addr);
-  } else if (opcode == 0x79) {  // absolute,Y
-    uint16_t addr = memory_view_->Get16(program_counter_);
-    program_counter_ += 2;
-    addr += y_;
-    val = memory_view_->Get(addr);
+  if (opcode == 0x61) {
+    val = NextIndirectX();
+  } if (opcode == 0x65) {
+    val = NextZeroPage();
+  } else if (opcode == 0x69) {
+    val = NextImmediate();
+  } else if (opcode == 0x6D) {
+    val = NextAbsolute();
+  } else if (opcode == 0x71) {
+    val = NextIndirectY();
+  } else if (opcode == 0x75) {
+    val = NextZeroPageX();
+  } else if (opcode == 0x79) {
+    val = NextAbsoluteY();
   } else if (opcode == 0x7D) { // absolute,X
-    uint16_t addr = memory_view_->Get16(program_counter_);
-    program_counter_ += 2;
-    addr += x_;
-    val = memory_view_->Get(addr);
+    val = NextAbsoluteX();
   } else {
     throw std::runtime_error("Bad opcode on ADC");
   }
