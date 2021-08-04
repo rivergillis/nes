@@ -40,13 +40,17 @@ class Cpu6502 {
     uint8_t NextAbsoluteY();
     uint8_t NextIndirectX();
     uint8_t NextIndirectY();
+    uint16_t NextAbsoluteIndirect(); // only JMP
 
     void DbgMem();
+    std::string PC();
 
     /// INSTRUCTIONS
 
     // Add with Carry
     void ADC(uint8_t op);
+    void JMP(uint8_t op);
+    void BRK();
 
     // Points to next address to execute
     uint16_t program_counter_ = 0;

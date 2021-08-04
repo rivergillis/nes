@@ -26,7 +26,6 @@ Cpu6502::Cpu6502(const std::string& file_path) {
 
 void Cpu6502::RunCycle() {
   uint8_t opcode = memory_view_->Get(program_counter_++);
-  // TODO: One big switch statement....
   switch (opcode) {
     case 0x69:
     case 0x65:
@@ -37,6 +36,14 @@ void Cpu6502::RunCycle() {
     case 0x61:
     case 0x71:
       ADC(opcode);
+      break;
+    case 0x4C:
+    case 0x6C:
+      JMP(opcode);
+      break;
+    case 0x00:
+      BRK();
+      break;
     default:
       DBG("OP %#02x.... ", opcode);
       throw std::runtime_error("Unimplemented opcode.");
@@ -189,6 +196,11 @@ uint8_t Cpu6502::NextIndirectY() {
   addr += y_;
   return memory_view_->Get(addr);
 }
+uint16_t Cpu6502::NextAbsoluteIndirect() {
+  uint16_t indirect = memory_view_->Get16(program_counter_);
+  program_counter_ += 2;
+  return memory_view_->Get16(indirect);
+}
 
 void Cpu6502::DbgMem() {
   for (int i = 0x6000; i <= 0xFFFF; i += 0x10) {
@@ -200,31 +212,54 @@ void Cpu6502::DbgMem() {
   DBG("\n");
 }
 
-void Cpu6502::ADC(uint8_t opcode) {
+std::string Cpu6502::PC() {
+  return string_format("[%#06x]: ", program_counter_);
+}
+
+void Cpu6502::ADC(uint8_t op) {
   uint8_t val = 0;
-  if (opcode == 0x61) {
+
+  if (op == 0x61) {
     val = NextIndirectX();
-  } if (opcode == 0x65) {
+  } if (op == 0x65) {
     val = NextZeroPage();
-  } else if (opcode == 0x69) {
+  } else if (op == 0x69) {
     val = NextImmediate();
-  } else if (opcode == 0x6D) {
+  } else if (op == 0x6D) {
     val = NextAbsolute();
-  } else if (opcode == 0x71) {
+  } else if (op == 0x71) {
     val = NextIndirectY();
-  } else if (opcode == 0x75) {
+  } else if (op == 0x75) {
     val = NextZeroPageX();
-  } else if (opcode == 0x79) {
+  } else if (op == 0x79) {
     val = NextAbsoluteY();
-  } else if (opcode == 0x7D) { // absolute,X
+  } else if (op == 0x7D) {
     val = NextAbsoluteX();
   } else {
     throw std::runtime_error("Bad opcode on ADC");
   }
+
   uint16_t new_a = a_ + val + GetFlag(Flag::C);
   SetFlag(Flag::C, new_a > 0xFF);
   SetFlag(Flag::V, Pos(a_) && Pos(val) && !Pos(new_a));
   SetFlag(Flag::Z, new_a == 0);
   SetFlag(Flag::N, !Pos(new_a));
   a_ = new_a;
+}
+
+void Cpu6502::JMP(uint8_t op) {
+  uint16_t val = 0;
+  if (op == 0x4c) {
+    val = NextAbsolute();
+  } else if (op == 0x6c) {
+    val = NextAbsoluteIndirect();
+  } else {
+    throw std::runtime_error("Bad opcode on JMP");
+  }
+  DBG("%sJMP to %#06x\n", PC().c_str(), val);
+  program_counter_ = val;
+}
+
+void Cpu6502::BRK() {
+  // todo
 }
