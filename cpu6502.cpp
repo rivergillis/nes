@@ -51,13 +51,14 @@ void Cpu6502::Reset(const std::string& file_path) {
   assert(memory_view_);
   // DbgMem();
 
-  // nesdev should start at 0xC000 till I get indput working
+  // nestest should start at 0xC000 till I get indput working
   if (file_path == "/Users/river/code/nes/roms/nestest.nes") {
     program_counter_ = 0xC000;
   } else {
     program_counter_ =  memory_view_->Get16(0xFFFC);
   }
 
+  a_ = x_ = y_ = p_ = 0;   // not realistic.
 }
 
 void Cpu6502::LoadCartrtidgeFile(const std::string& file_path) {
@@ -127,6 +128,19 @@ void Cpu6502::LoadNes1File(std::vector<uint8_t> bytes) {
   mapper_ = std::make_unique<NromMapper>(bytes.data() + 16, prg_rom_size);
 }
 
+bool Cpu6502::GetFlag(Cpu6502::Flag flag) {
+  return Bit(static_cast<uint8_t>(flag), p_) == 1;
+}
+
+void Cpu6502::SetFlag(Cpu6502::Flag flag, bool val) {
+  if (val) {
+    p_ |= (1 << static_cast<uint8_t>(flag));
+  } else {
+    p_ &= ~(1 << static_cast<uint8_t>(flag));
+  }
+
+}
+
 void Cpu6502::DbgMem() {
   for (int i = 0x6000; i <= 0xFFFF; i += 0x10) {
     DBG("\nCPU[%03X]: ", i);
@@ -177,6 +191,10 @@ void Cpu6502::ADC(uint8_t opcode) {
   } else {
     throw std::runtime_error("Bad opcode on ADC");
   }
-  a_ += val;
-  // todo set flags
+  uint16_t new_a = a_ + val + GetFlag(Flag::C);
+  SetFlag(Flag::C, new_a > 0xFF);
+  SetFlag(Flag::V, Pos(a_) && Pos(val) && !Pos(new_a));
+  SetFlag(Flag::Z, new_a == 0);
+  SetFlag(Flag::N, !Pos(new_a));
+  a_ = new_a;
 }

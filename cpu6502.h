@@ -23,6 +23,13 @@ class Cpu6502 {
     // Loads an iNES 1.0 file
     void LoadNes1File(std::vector<uint8_t> bytes);
 
+    // D has no effect. 
+    enum class Flag {
+      C = 0, Z = 1, I = 2, D = 3, V = 6, N = 7
+    };
+    bool GetFlag(Flag flag);
+    void SetFlag(Flag flag, bool val);
+
     void DbgMem();
 
     /// INSTRUCTIONS
@@ -48,6 +55,7 @@ class Cpu6502 {
     uint8_t a_;
     uint8_t x_;
     uint8_t y_;
+    // Bit order MSb (NVxx DIZC) LSb -> Bits 4 and 5 only set when copied to stack.
     uint8_t p_;
     uint8_t stack_pointer_;
 
