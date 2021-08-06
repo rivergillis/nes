@@ -35,7 +35,7 @@ class Cpu6502 {
     uint8_t NextZeroPage();
     uint8_t NextZeroPageX();
     uint8_t NextZeroPageY();
-    uint8_t NextAbsolute();
+    uint16_t NextAbsolute();
     uint8_t NextAbsoluteX();
     uint8_t NextAbsoluteY();
     uint8_t NextIndirectX();

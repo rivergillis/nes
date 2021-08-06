@@ -71,6 +71,7 @@ void Cpu6502::Reset(const std::string& file_path) {
   // DbgMem();
 
   // nestest should start at 0xC000 till I get indput working
+  // C000 is start of PRG_ROM's mirror (so 0x10 in .nes)
   if (file_path == "/Users/river/code/nes/roms/nestest.nes") {
     program_counter_ = 0xC000;
   } else {
@@ -179,10 +180,10 @@ uint8_t Cpu6502::NextZeroPageY() {
   addr = (addr + y_) % 0xFF;  // Add Y to LSB of ZP
   return memory_view_->Get(addr);
 }
-uint8_t Cpu6502::NextAbsolute() {
+uint16_t Cpu6502::NextAbsolute() {
   uint16_t addr = memory_view_->Get16(program_counter_);
   program_counter_ += 2;
-  return memory_view_->Get(addr);
+  return addr;
 }
 uint8_t Cpu6502::NextAbsoluteX() {
   uint16_t addr = memory_view_->Get16(program_counter_);
@@ -260,6 +261,8 @@ std::string Cpu6502::Status() {
 void Cpu6502::ADC(uint8_t op) {
   uint8_t val = 0;
 
+  throw std::runtime_error("Re-implement ADC, absolutes should be 16-bit...");
+
   if (op == 0x61) {
     val = NextIndirectX();
   } if (op == 0x65) {
@@ -291,6 +294,7 @@ void Cpu6502::ADC(uint8_t op) {
 void Cpu6502::JMP(uint8_t op) {
   uint16_t val = 0;
   if (op == 0x4c) {
+    // We're jumping to internal memory at 0x00a2, that cannot be right...
     val = NextAbsolute();
   } else if (op == 0x6c) {
     val = NextAbsoluteIndirect();
