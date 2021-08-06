@@ -70,6 +70,11 @@ void Cpu6502::RunCycle() {
     case 0x8E:
       STX(opcode);
       break;
+    case 0x20:
+      JSR();
+      break;
+    case 0xEA:
+      break;  // NOP
     default:
       DBG("OP %#04x.... ", opcode);
       throw std::runtime_error("Unimplemented opcode.");
@@ -356,9 +361,15 @@ void Cpu6502::STX(uint8_t op) {
   } else if (op == 0x8E) {
     addr = NextAbsolute();
   } else {
-    throw std::runtime_error("Bad opcode in LDX");
+    throw std::runtime_error("Bad opcode in STX");
   }
 
   memory_view_->Set(addr, x_);
   DBG("%#04x <= X\n", x_);
+}
+
+void Cpu6502::JSR() {
+  PushStack16(program_counter_);
+  program_counter_ = NextAbsolute();
+  DBG("JSR to %#06x\n", program_counter_);
 }

@@ -60,6 +60,7 @@ class Cpu6502 {
     void RTI();
     void LDX(uint8_t op);
     void STX(uint8_t op);
+    void JSR();
 
     // Points to next address to execute
     uint16_t program_counter_ = 0;
