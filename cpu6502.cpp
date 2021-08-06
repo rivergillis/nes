@@ -9,6 +9,7 @@
 #include "memory_view.h"
 
 namespace { 
+
 void DBG(const char* str, ...) {
   #ifdef DEBUG
   va_list arglist;
@@ -17,6 +18,11 @@ void DBG(const char* str, ...) {
   va_end(arglist);
   #endif
 }
+
+uint16_t StackAddr(uint8_t sp) {
+  return ((0x01 << 8) | sp);
+}
+
 }
 
 Cpu6502::Cpu6502(const std::string& file_path) {
@@ -25,7 +31,9 @@ Cpu6502::Cpu6502(const std::string& file_path) {
 }
 
 void Cpu6502::RunCycle() {
-  uint8_t opcode = memory_view_->Get(program_counter_++);
+  uint8_t opcode = memory_view_->Get(program_counter_);
+  DBG("%s -- executing opcode %#04x\n", Status().c_str(), opcode);
+  program_counter_++;
   switch (opcode) {
     case 0x69:
     case 0x65:
@@ -45,7 +53,7 @@ void Cpu6502::RunCycle() {
       BRK();
       break;
     default:
-      DBG("OP %#02x.... ", opcode);
+      DBG("OP %#04x.... ", opcode);
       throw std::runtime_error("Unimplemented opcode.");
   }
 }
@@ -65,7 +73,9 @@ void Cpu6502::Reset(const std::string& file_path) {
     program_counter_ =  memory_view_->Get16(0xFFFC);
   }
 
-  a_ = x_ = y_ = p_ = 0;   // not realistic.
+  // not realistic -- programs should set these
+  a_ = x_ = y_ = p_ = 0;
+  stack_pointer_ = 0xFF;
 }
 
 void Cpu6502::LoadCartrtidgeFile(const std::string& file_path) {
@@ -202,6 +212,23 @@ uint16_t Cpu6502::NextAbsoluteIndirect() {
   return memory_view_->Get16(indirect);
 }
 
+void Cpu6502::PushStack(uint8_t val) {
+  memory_view_->Set(StackAddr(stack_pointer_--), val);
+}
+void Cpu6502::PushStack16(uint16_t val) {
+  // Store LSB then MSB
+  PushStack(val);
+  PushStack(val >> 8);
+}
+uint8_t Cpu6502::PopStack() {
+  return memory_view_->Get(StackAddr(stack_pointer_++));
+}
+uint16_t Cpu6502::PopStack16() {
+  // Value was stored little-endian in top-down stack, so get MSB then LSB
+  // PopStack()
+  return (PopStack() << 8) | PopStack();
+}
+
 void Cpu6502::DbgMem() {
   for (int i = 0x6000; i <= 0xFFFF; i += 0x10) {
     DBG("\nCPU[%03X]: ", i);
@@ -212,8 +239,9 @@ void Cpu6502::DbgMem() {
   DBG("\n");
 }
 
-std::string Cpu6502::PC() {
-  return string_format("[%#06x]: ", program_counter_);
+std::string Cpu6502::Status() {
+  return string_format("[PC: %#06x, A: %#04x, X: %#04x, Y: %#04x, P: %#04x, SP: %#04x]",
+    program_counter_, a_, x_, y_, p_, stack_pointer_);
 }
 
 void Cpu6502::ADC(uint8_t op) {
@@ -256,10 +284,14 @@ void Cpu6502::JMP(uint8_t op) {
   } else {
     throw std::runtime_error("Bad opcode on JMP");
   }
-  DBG("%sJMP to %#06x\n", PC().c_str(), val);
+  DBG("JMP to %#06x\n", val);
   program_counter_ = val;
 }
 
 void Cpu6502::BRK() {
-  // todo
+  PushStack16(program_counter_);
+  PushStack(p_ | 0b0011'0000);  // B=0b11
+  program_counter_ = memory_view_->Get16(0xFFFE);
+  SetFlag(Flag::I, true);
+  DBG("BRK to %#06x\n", program_counter_);
 }

@@ -42,7 +42,13 @@ class Cpu6502 {
     uint8_t NextIndirectY();
     uint16_t NextAbsoluteIndirect(); // only JMP
 
+    void PushStack(uint8_t val);
+    void PushStack16(uint16_t val);
+    uint8_t PopStack();
+    uint16_t PopStack16();
+
     void DbgMem();
+    std::string Status();
     std::string PC();
 
     /// INSTRUCTIONS
