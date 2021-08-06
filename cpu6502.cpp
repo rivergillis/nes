@@ -10,6 +10,8 @@
 
 namespace { 
 
+#define VAL(a) memory_view_->Get(a);
+
 void DBG(const char* str, ...) {
   #ifdef DEBUG
   va_list arglist;
@@ -62,6 +64,11 @@ void Cpu6502::RunCycle() {
     case 0xAE:
     case 0xBE:
       LDX(opcode);
+      break;
+    case 0x86:
+    case 0x96:
+    case 0x8E:
+      STX(opcode);
       break;
     default:
       DBG("OP %#04x.... ", opcode);
@@ -173,53 +180,45 @@ void Cpu6502::SetFlag(Cpu6502::Flag flag, bool val) {
 uint8_t Cpu6502::NextImmediate() {
   return memory_view_->Get(program_counter_++);
 }
-uint8_t Cpu6502::NextZeroPage() {
-  uint16_t addr = memory_view_->Get(program_counter_++);
-  return memory_view_->Get(addr);
+uint16_t Cpu6502::NextZeroPage() {
+  return memory_view_->Get(program_counter_++);
 }
-uint8_t Cpu6502::NextZeroPageX() {
+uint16_t Cpu6502::NextZeroPageX() {
   uint16_t addr = memory_view_->Get(program_counter_++);
   addr = (addr + x_) % 0xFF;  // Add X to LSB of ZP
-  return memory_view_->Get(addr);
+  return addr;
 }
-uint8_t Cpu6502::NextZeroPageY() {
+uint16_t Cpu6502::NextZeroPageY() {
   uint16_t addr = memory_view_->Get(program_counter_++);
   addr = (addr + y_) % 0xFF;  // Add Y to LSB of ZP
-  return memory_view_->Get(addr);
+  return addr;
 }
-uint16_t Cpu6502::NextAbsoluteAddress() {
+uint16_t Cpu6502::NextAbsolute() {
   uint16_t addr = memory_view_->Get16(program_counter_);
   program_counter_ += 2;
   return addr;
 }
-uint8_t Cpu6502::NextAbsoluteValue() {
-  return memory_view_->Get(NextAbsoluteAddress());
-}
-uint8_t Cpu6502::NextAbsoluteX() {
+uint16_t Cpu6502::NextAbsoluteX() {
   uint16_t addr = memory_view_->Get16(program_counter_);
   program_counter_ += 2;
-  addr += x_;
-  return memory_view_->Get(addr);
+  return addr + x_;
 }
-uint8_t Cpu6502::NextAbsoluteY() {
+uint16_t Cpu6502::NextAbsoluteY() {
   uint16_t addr = memory_view_->Get16(program_counter_);
   program_counter_ += 2;
-  addr += y_;
-  return memory_view_->Get(addr);
+  return addr + y_;
 }
-uint8_t Cpu6502::NextIndirectX() {
+uint16_t Cpu6502::NextIndirectX() {
   // Get ZP, add X_ to LSB, then read full addr
   uint16_t zero_addr = memory_view_->Get(program_counter_++);
   zero_addr = (zero_addr + x_) % 0xFF;
-  uint16_t addr = memory_view_->Get16(zero_addr);
-  return memory_view_->Get(addr);
+  return memory_view_->Get16(zero_addr);
 }
-uint8_t Cpu6502::NextIndirectY() {
+uint16_t Cpu6502::NextIndirectY() {
   // get ZP addr, then read full addr from it and add Y
   uint16_t zero_addr = memory_view_->Get(program_counter_++);
   uint16_t addr = memory_view_->Get16(zero_addr);
-  addr += y_;
-  return memory_view_->Get(addr);
+  return addr + y_;
 }
 uint16_t Cpu6502::NextAbsoluteIndirect() {
   uint16_t indirect = memory_view_->Get16(program_counter_);
@@ -272,21 +271,21 @@ void Cpu6502::ADC(uint8_t op) {
   uint8_t val = 0;
 
   if (op == 0x61) {
-    val = NextIndirectX();
+    val = VAL(NextIndirectX());
   } if (op == 0x65) {
-    val = NextZeroPage();
+    val = VAL(NextZeroPage());
   } else if (op == 0x69) {
     val = NextImmediate();
   } else if (op == 0x6D) {
-    val = NextAbsoluteValue();
+    val = VAL(NextAbsolute());
   } else if (op == 0x71) {
-    val = NextIndirectY();
+    val = VAL(NextIndirectY());
   } else if (op == 0x75) {
-    val = NextZeroPageX();
+    val = VAL(NextZeroPageX());
   } else if (op == 0x79) {
-    val = NextAbsoluteY();
+    val = VAL(NextAbsoluteY());
   } else if (op == 0x7D) {
-    val = NextAbsoluteX();
+    val = VAL(NextAbsoluteX());
   } else {
     throw std::runtime_error("Bad opcode on ADC");
   }
@@ -300,16 +299,16 @@ void Cpu6502::ADC(uint8_t op) {
 }
 
 void Cpu6502::JMP(uint8_t op) {
-  uint16_t val = 0;
+  uint16_t addr = 0;
   if (op == 0x4c) {
-    val = NextAbsoluteAddress();
+    addr = NextAbsolute();
   } else if (op == 0x6c) {
-    val = NextAbsoluteIndirect();
+    addr = NextAbsoluteIndirect();
   } else {
     throw std::runtime_error("Bad opcode on JMP");
   }
-  DBG("JMP to %#06x\n", val);
-  program_counter_ = val;
+  DBG("JMP to %#06x\n", addr);
+  program_counter_ = addr;
 }
 
 void Cpu6502::BRK() {
@@ -331,13 +330,13 @@ void Cpu6502::LDX(uint8_t op) {
   if (op == 0xA2) {
     val = NextImmediate();
   } else if (op == 0xA6) {
-    val = NextZeroPage();
+    val = VAL(NextZeroPage());
   } else if (op == 0xB6) {
-    val = NextZeroPageY();
+    val = VAL(NextZeroPageY());
   } else if (op == 0xAE) {
-    val = NextAbsoluteValue();
+    val = VAL(NextAbsolute());
   } else if (op == 0xBE) {
-    val = NextAbsoluteY();
+    val = VAL(NextAbsoluteY());
   } else {
     throw std::runtime_error("Bad opcode in LDX");
   }
@@ -346,4 +345,20 @@ void Cpu6502::LDX(uint8_t op) {
   SetFlag(Flag::N, !Pos(val));
   x_ = val;
   DBG("X <= %#04x\n", x_);
+}
+
+void Cpu6502::STX(uint8_t op) {
+  uint16_t addr = 0;
+  if (op == 0x86) {
+    addr = NextZeroPage();
+  } else if (op == 0x96) {
+    addr = NextZeroPageY();
+  } else if (op == 0x8E) {
+    addr = NextAbsolute();
+  } else {
+    throw std::runtime_error("Bad opcode in LDX");
+  }
+
+  memory_view_->Set(addr, x_);
+  DBG("%#04x <= X\n", x_);
 }

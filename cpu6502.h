@@ -31,18 +31,16 @@ class Cpu6502 {
     void SetFlag(Flag flag, bool val);
 
     /// Addressing modes -- affects program_counter
+    // These all return addresses except NextImmediate()
     uint8_t NextImmediate();
-    uint8_t NextZeroPage();
-    uint8_t NextZeroPageX();
-    uint8_t NextZeroPageY();
-    // Absolute is used two ways. In JMP we use the value itself like an imm
-    // but elsewhere we take the value at that addr (NextAbsolute).
-    uint16_t NextAbsoluteAddress();
-    uint8_t NextAbsoluteValue();
-    uint8_t NextAbsoluteX();
-    uint8_t NextAbsoluteY();
-    uint8_t NextIndirectX();
-    uint8_t NextIndirectY();
+    uint16_t NextZeroPage();
+    uint16_t NextZeroPageX();
+    uint16_t NextZeroPageY();
+    uint16_t NextAbsolute();
+    uint16_t NextAbsoluteX();
+    uint16_t NextAbsoluteY();
+    uint16_t NextIndirectX();
+    uint16_t NextIndirectY();
     uint16_t NextAbsoluteIndirect(); // only JMP
 
     void PushStack(uint8_t val);
@@ -61,6 +59,7 @@ class Cpu6502 {
     void BRK();
     void RTI();
     void LDX(uint8_t op);
+    void STX(uint8_t op);
 
     // Points to next address to execute
     uint16_t program_counter_ = 0;
