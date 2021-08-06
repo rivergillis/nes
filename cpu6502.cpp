@@ -180,10 +180,13 @@ uint8_t Cpu6502::NextZeroPageY() {
   addr = (addr + y_) % 0xFF;  // Add Y to LSB of ZP
   return memory_view_->Get(addr);
 }
-uint16_t Cpu6502::NextAbsolute() {
+uint16_t Cpu6502::NextAbsoluteAddress() {
   uint16_t addr = memory_view_->Get16(program_counter_);
   program_counter_ += 2;
   return addr;
+}
+uint8_t Cpu6502::NextAbsoluteValue() {
+  return memory_view_->Get(NextAbsoluteAddress());
 }
 uint8_t Cpu6502::NextAbsoluteX() {
   uint16_t addr = memory_view_->Get16(program_counter_);
@@ -261,8 +264,6 @@ std::string Cpu6502::Status() {
 void Cpu6502::ADC(uint8_t op) {
   uint8_t val = 0;
 
-  throw std::runtime_error("Re-implement ADC, absolutes should be 16-bit...");
-
   if (op == 0x61) {
     val = NextIndirectX();
   } if (op == 0x65) {
@@ -270,7 +271,7 @@ void Cpu6502::ADC(uint8_t op) {
   } else if (op == 0x69) {
     val = NextImmediate();
   } else if (op == 0x6D) {
-    val = NextAbsolute();
+    val = NextAbsoluteValue();
   } else if (op == 0x71) {
     val = NextIndirectY();
   } else if (op == 0x75) {
@@ -294,8 +295,7 @@ void Cpu6502::ADC(uint8_t op) {
 void Cpu6502::JMP(uint8_t op) {
   uint16_t val = 0;
   if (op == 0x4c) {
-    // We're jumping to internal memory at 0x00a2, that cannot be right...
-    val = NextAbsolute();
+    val = NextAbsoluteAddress();
   } else if (op == 0x6c) {
     val = NextAbsoluteIndirect();
   } else {

@@ -35,7 +35,10 @@ class Cpu6502 {
     uint8_t NextZeroPage();
     uint8_t NextZeroPageX();
     uint8_t NextZeroPageY();
-    uint16_t NextAbsolute();
+    // Absolute is used two ways. In JMP we use the value itself like an imm
+    // but elsewhere we take the value at that addr (NextAbsolute).
+    uint16_t NextAbsoluteAddress();
+    uint8_t NextAbsoluteValue();
     uint8_t NextAbsoluteX();
     uint8_t NextAbsoluteY();
     uint8_t NextIndirectX();
