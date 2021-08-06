@@ -34,6 +34,7 @@ void Cpu6502::RunCycle() {
   uint8_t opcode = memory_view_->Get(program_counter_);
   DBG("%s -- executing opcode %#04x\n", Status().c_str(), opcode);
   program_counter_++;
+  // TODO: Order these somehow
   switch (opcode) {
     case 0x69:
     case 0x65:
@@ -51,6 +52,9 @@ void Cpu6502::RunCycle() {
       break;
     case 0x00:
       BRK();
+      break;
+    case 0x40:
+      RTI();
       break;
     default:
       DBG("OP %#04x.... ", opcode);
@@ -217,15 +221,14 @@ void Cpu6502::PushStack(uint8_t val) {
 }
 void Cpu6502::PushStack16(uint16_t val) {
   // Store LSB then MSB
-  PushStack(val);
+  PushStack(static_cast<uint8_t>(val));
   PushStack(val >> 8);
 }
 uint8_t Cpu6502::PopStack() {
-  return memory_view_->Get(StackAddr(stack_pointer_++));
+  return memory_view_->Get(StackAddr(++stack_pointer_));
 }
 uint16_t Cpu6502::PopStack16() {
   // Value was stored little-endian in top-down stack, so get MSB then LSB
-  // PopStack()
   return (PopStack() << 8) | PopStack();
 }
 
@@ -234,6 +237,16 @@ void Cpu6502::DbgMem() {
     DBG("\nCPU[%03X]: ", i);
     for (int j = 0; j < 0x10; j++) {
       DBG("%#04x ", mapper_->Get(i + j));
+    }
+  }
+  DBG("\n");
+}
+
+void Cpu6502::DbgStack() {
+  for (int i = 0x0100; i <= 0x01FF; i += 0x10) {
+    DBG("\nCPU[%03X]: ", i);
+    for (int j = 0; j < 0x10; j++) {
+      DBG("%#04x ", memory_view_->Get(i + j));
     }
   }
   DBG("\n");
@@ -289,9 +302,15 @@ void Cpu6502::JMP(uint8_t op) {
 }
 
 void Cpu6502::BRK() {
-  PushStack16(program_counter_);
+  PushStack16(program_counter_);  // PC is already +1 from reading instr.
   PushStack(p_ | 0b0011'0000);  // B=0b11
   program_counter_ = memory_view_->Get16(0xFFFE);
   SetFlag(Flag::I, true);
   DBG("BRK to %#06x\n", program_counter_);
+}
+
+void Cpu6502::RTI() {
+  p_ = (PopStack() & 0b1100'1111);  // clear B
+  program_counter_ = PopStack16();
+  DBG("RTI to %#06x\n", program_counter_);
 }
