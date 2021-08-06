@@ -56,6 +56,13 @@ void Cpu6502::RunCycle() {
     case 0x40:
       RTI();
       break;
+    case 0xA2:
+    case 0xA6:
+    case 0xB6:
+    case 0xAE:
+    case 0xBE:
+      LDX(opcode);
+      break;
     default:
       DBG("OP %#04x.... ", opcode);
       throw std::runtime_error("Unimplemented opcode.");
@@ -317,4 +324,26 @@ void Cpu6502::RTI() {
   p_ = (PopStack() & 0b1100'1111);  // clear B
   program_counter_ = PopStack16();
   DBG("RTI to %#06x\n", program_counter_);
+}
+
+void Cpu6502::LDX(uint8_t op) {
+  uint8_t val = 0;
+  if (op == 0xA2) {
+    val = NextImmediate();
+  } else if (op == 0xA6) {
+    val = NextZeroPage();
+  } else if (op == 0xB6) {
+    val = NextZeroPageY();
+  } else if (op == 0xAE) {
+    val = NextAbsoluteValue();
+  } else if (op == 0xBE) {
+    val = NextAbsoluteY();
+  } else {
+    throw std::runtime_error("Bad opcode in LDX");
+  }
+
+  SetFlag(Flag::Z, val == 0);
+  SetFlag(Flag::N, !Pos(val));
+  x_ = val;
+  DBG("X <= %#04x\n", x_);
 }

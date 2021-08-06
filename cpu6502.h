@@ -60,6 +60,7 @@ class Cpu6502 {
     void JMP(uint8_t op);
     void BRK();
     void RTI();
+    void LDX(uint8_t op);
 
     // Points to next address to execute
     uint16_t program_counter_ = 0;
