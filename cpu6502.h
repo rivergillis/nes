@@ -42,6 +42,8 @@ class Cpu6502 {
     uint16_t NextIndirectX();
     uint16_t NextIndirectY();
     uint16_t NextAbsoluteIndirect(); // only JMP
+    // For branching, decodes next offset into an address.
+    uint16_t NextRelativeAddr();
 
     void PushStack(uint8_t val);
     void PushStack16(uint16_t val);
@@ -61,6 +63,8 @@ class Cpu6502 {
     void LDX(uint8_t op);
     void STX(uint8_t op);
     void JSR();
+    void SEC();
+    void BCS();
 
     // Points to next address to execute
     uint16_t program_counter_ = 0;

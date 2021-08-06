@@ -75,6 +75,12 @@ void Cpu6502::RunCycle() {
       break;
     case 0xEA:
       break;  // NOP
+    case 0x38:
+      SEC();
+      break;
+    case 0xB0:
+      BCS();
+      break;
     default:
       DBG("OP %#04x.... ", opcode);
       throw std::runtime_error("Unimplemented opcode.");
@@ -231,6 +237,16 @@ uint16_t Cpu6502::NextAbsoluteIndirect() {
   return memory_view_->Get16(indirect);
 }
 
+uint16_t Cpu6502::NextRelativeAddr() {
+  uint8_t offset_uint = memory_view_->Get(program_counter_++);
+  // https://stackoverflow.com/questions/14623266/why-cant-i-reinterpret-cast-uint-to-int
+  int8_t tmp;
+  std::memcpy(&tmp, &offset_uint, sizeof(tmp));
+  const int8_t offset = tmp;
+
+  return program_counter_ + offset;
+}
+
 void Cpu6502::PushStack(uint8_t val) {
   memory_view_->Set(StackAddr(stack_pointer_--), val);
 }
@@ -365,11 +381,24 @@ void Cpu6502::STX(uint8_t op) {
   }
 
   memory_view_->Set(addr, x_);
-  DBG("%#04x <= X\n", x_);
+  DBG("%#06x <= X\n", addr);
 }
 
 void Cpu6502::JSR() {
   PushStack16(program_counter_);
   program_counter_ = NextAbsolute();
   DBG("JSR to %#06x\n", program_counter_);
+}
+
+void Cpu6502::SEC() {
+  SetFlag(Flag::C, true);
+  DBG("C = 1\n");
+}
+
+void Cpu6502::BCS() {
+  uint16_t addr = NextRelativeAddr();
+  if (GetFlag(Flag::C)) {
+    DBG("Branching to %#06x\n", addr);
+    program_counter_ = addr;
+  }
 }
