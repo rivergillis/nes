@@ -103,6 +103,15 @@ void Cpu6502::RunCycle() {
     case 0xD0:
       BNE();
       break;
+    case 0x85:
+    case 0x95:
+    case 0x8D:
+    case 0x9D:
+    case 0x99:
+    case 0x81:
+    case 0x91:
+      STA(opcode);
+      break;
     default:
       DBG("OP %#04x.... ", opcode);
       throw std::runtime_error("Unimplemented opcode.");
@@ -480,4 +489,28 @@ void Cpu6502::BNE() {
     DBG("Branching to %#06x\n", addr);
     program_counter_ = addr;
   }
+}
+
+void Cpu6502::STA(uint8_t op) {
+  uint16_t addr = 0;
+  if (op == 0x85) {
+    addr = NextZeroPage();
+  } else if (op == 0x95) {
+    addr = NextZeroPageX();
+  } else if (op == 0x8D) {
+    addr = NextAbsolute();
+  } else if (op == 0x9D) {
+    addr = NextAbsoluteX();
+  } else if (op == 0x99) {
+    addr = NextAbsoluteY();
+  } else if (op == 0x81) {
+    addr = NextIndirectX();
+  } else if (op == 0x91) {
+    addr = NextIndirectY();
+  } else {
+    throw std::runtime_error("Bad opcode in STX");
+  }
+
+  memory_view_->Set(addr, a_);
+  DBG("%#06x <= A\n", addr);
 }

@@ -70,6 +70,7 @@ class Cpu6502 {
     void LDA(uint8_t op);
     void BEQ();
     void BNE();
+    void STA(uint8_t op);
 
     // Points to next address to execute
     uint16_t program_counter_ = 0;
