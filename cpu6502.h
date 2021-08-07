@@ -65,6 +65,11 @@ class Cpu6502 {
     void JSR();
     void SEC();
     void BCS();
+    void CLC();
+    void BCC();
+    void LDA(uint8_t op);
+    void BEQ();
+    void BNE();
 
     // Points to next address to execute
     uint16_t program_counter_ = 0;

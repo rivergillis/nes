@@ -81,6 +81,28 @@ void Cpu6502::RunCycle() {
     case 0xB0:
       BCS();
       break;
+    case 0x18:
+      CLC();
+      break;
+    case 0x90:
+      BCC();
+      break;
+    case 0xA9:
+    case 0xA5:
+    case 0xB5:
+    case 0xAD:
+    case 0xBD:
+    case 0xB9:
+    case 0xA1:
+    case 0xB1:
+      LDA(opcode);
+      break;
+    case 0xF0:
+      BEQ();
+      break;
+    case 0xD0:
+      BNE();
+      break;
     default:
       DBG("OP %#04x.... ", opcode);
       throw std::runtime_error("Unimplemented opcode.");
@@ -398,6 +420,63 @@ void Cpu6502::SEC() {
 void Cpu6502::BCS() {
   uint16_t addr = NextRelativeAddr();
   if (GetFlag(Flag::C)) {
+    DBG("Branching to %#06x\n", addr);
+    program_counter_ = addr;
+  }
+}
+
+void Cpu6502::CLC() {
+  SetFlag(Flag::C, false);
+  DBG("C = 0\n");
+}
+
+void Cpu6502::BCC() {
+  uint16_t addr = NextRelativeAddr();
+  if (!GetFlag(Flag::C)) {
+    DBG("Branching to %#06x\n", addr);
+    program_counter_ = addr;
+  }
+}
+
+void Cpu6502::LDA(uint8_t op) {
+  uint8_t val = 0;
+  if (op == 0xA9) {
+    val = NextImmediate();
+  } else if (op == 0xA5) {
+    val = VAL(NextZeroPage());
+  } else if (op == 0xB5) {
+    val = VAL(NextZeroPageX());
+  } else if (op == 0xAD) {
+    val = VAL(NextAbsolute());
+  } else if (op == 0xBD) {
+    val = VAL(NextAbsoluteX());
+  } else if (op == 0xB9) {
+    val = VAL(NextAbsoluteY());
+  } else if (op == 0xA1) {
+    val = VAL(NextIndirectX());
+  } else if (op == 0xB1) {
+    val = VAL(NextIndirectY());
+  } else {
+    throw std::runtime_error("Bad opcode in LDA");
+  }
+
+  SetFlag(Flag::Z, val == 0);
+  SetFlag(Flag::N, !Pos(val));
+  a_ = val;
+  DBG("A <= %#04x\n", a_);
+}
+
+void Cpu6502::BEQ() {
+  uint16_t addr = NextRelativeAddr();
+  if (GetFlag(Flag::Z)) {
+    DBG("Branching to %#06x\n", addr);
+    program_counter_ = addr;
+  }
+}
+
+void Cpu6502::BNE() {
+  uint16_t addr = NextRelativeAddr();
+  if (!GetFlag(Flag::Z)) {
     DBG("Branching to %#06x\n", addr);
     program_counter_ = addr;
   }
