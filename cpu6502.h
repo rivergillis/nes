@@ -71,6 +71,7 @@ class Cpu6502 {
     void BEQ();
     void BNE();
     void STA(uint8_t op);
+    void BIT(uint8_t op);
 
     // Points to next address to execute
     uint16_t program_counter_ = 0;

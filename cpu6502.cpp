@@ -112,6 +112,10 @@ void Cpu6502::RunCycle() {
     case 0x91:
       STA(opcode);
       break;
+    case 0x24:
+    case 0x2C:
+      BIT(opcode);
+      break;
     default:
       DBG("OP %#04x.... ", opcode);
       throw std::runtime_error("Unimplemented opcode.");
@@ -513,4 +517,18 @@ void Cpu6502::STA(uint8_t op) {
 
   memory_view_->Set(addr, a_);
   DBG("%#06x <= A\n", addr);
+}
+
+void Cpu6502::BIT(uint8_t op) {
+  // todo: something wrong. P should be 0xA4 after this.
+  uint8_t val = 0;
+  if (op == 0x24) {
+    val = VAL(NextZeroPage());
+  } else if (op == 0x2C) {
+    val = VAL(NextAbsolute());
+  }
+  uint8_t res = val & a_;
+  SetFlag(Flag::Z, res == 0);
+  SetFlag(Flag::V, Bit(val, 6) == 1);
+  SetFlag(Flag::N, Bit(val, 7) == 1);
 }
