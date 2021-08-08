@@ -139,7 +139,8 @@ void Cpu6502::Reset(const std::string& file_path) {
   }
 
   // not realistic -- programs should set these
-  a_ = x_ = y_ = p_ = 0;
+  a_ = x_ = y_ = 0;
+  p_ = 0x24;  // for nestest golden
   stack_pointer_ = 0xFF;
 }
 
@@ -397,6 +398,7 @@ void Cpu6502::LDX(uint8_t op) {
     throw std::runtime_error("Bad opcode in LDX");
   }
 
+  // We set the negative flag here for 0....
   SetFlag(Flag::Z, val == 0);
   SetFlag(Flag::N, !Pos(val));
   x_ = val;
@@ -520,7 +522,7 @@ void Cpu6502::STA(uint8_t op) {
 }
 
 void Cpu6502::BIT(uint8_t op) {
-  // todo: something wrong. P should be 0xA4 after this.
+  // todo: something wrong. P should be 0xE4 after this.
   uint8_t val = 0;
   if (op == 0x24) {
     val = VAL(NextZeroPage());
@@ -529,6 +531,7 @@ void Cpu6502::BIT(uint8_t op) {
   }
   uint8_t res = val & a_;
   SetFlag(Flag::Z, res == 0);
+  // Should be setting N and V high..
   SetFlag(Flag::V, Bit(val, 6) == 1);
   SetFlag(Flag::N, Bit(val, 7) == 1);
 }

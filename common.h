@@ -21,7 +21,7 @@ uint8_t Bit(uint8_t bit_pos, T val) {
 // Always checks bit 7 (for bytes).
 template <typename T>
 bool Pos(T byte) {
-  return Bit(7, byte) == 1;
+  return Bit(7, byte) == 0;
 }
 
 // https://stackoverflow.com/questions/2342162/stdstring-formatting-like-sprintf  for C++11
