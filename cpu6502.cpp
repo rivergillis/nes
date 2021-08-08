@@ -12,9 +12,20 @@
 namespace { 
 
 #define VAL(a) memory_view_->Get(a);
+#define DBGPAD(...) DBG("%-32s", string_format(__VA_ARGS__).c_str());
 
+// Used for nestest log goldens
 void DBG(const char* str, ...) {
   #ifdef DEBUG
+  va_list arglist;
+  va_start(arglist, str);
+  vprintf(str, arglist);
+  va_end(arglist);
+  #endif
+}
+// used for everything else
+void VDBG(const char* str, ...) {
+  #ifdef VDEBUG
   va_list arglist;
   va_start(arglist, str);
   vprintf(str, arglist);
@@ -30,14 +41,21 @@ uint16_t StackAddr(uint8_t sp) {
 
 Cpu6502::Cpu6502(const std::string& file_path) {
   Reset(file_path);
-  DBG("NES ready. PC: %#04x\n", program_counter_);
+  VDBG("NES ready. PC: %#04x\n", program_counter_);
 }
 
 void Cpu6502::RunCycle() {
+// C000  4C F5 C5  JMP $C5F5                       A:00 X:00 Y:00 P:24 SP:FD PPU:  0, 21 CYC:7
+// PC    opcode + bytes read   decoded name + addressing    status
+// here   instr                   instr                       here
+// so instr needs to know name
+  std::string prev_flags = string_format("A:%02X X:%02X Y:%02X P:%02X SP:%02X",
+    a_, x_, y_, p_, stack_pointer_);
   uint8_t opcode = memory_view_->Get(program_counter_);
-  DBG("%s -- executing opcode %#04x\n", Status().c_str(), opcode);
+  DBG("%04X  %02X ", program_counter_, opcode);
   program_counter_++;
   instructions_.at(opcode).impl();
+  DBG("%s PPU:  0,  0 CYC: 0\n", prev_flags.c_str()); // nestest wants flags prior to instr, cycles after (maybe).
 }
 
 void Cpu6502::Reset(const std::string& file_path) {
@@ -48,7 +66,7 @@ void Cpu6502::Reset(const std::string& file_path) {
   assert(memory_view_);
   // DbgMem();
 
-  // nestest should start at 0xC000 till I get indput working
+  // nestest should start at 0xC000 till I get input working
   // C000 is start of PRG_ROM's mirror (so 0x10 in .nes)
   if (file_path == "/Users/river/code/nes/roms/nestest.nes") {
     program_counter_ = 0xC000;
@@ -86,12 +104,12 @@ void Cpu6502::LoadCartrtidgeFile(const std::string& file_path) {
   }
 
   if (is_nes2) {
-    std::cout << "Found " << bytes.size() << " byte NES 2.0 file." << std::endl;
+    VDBG("Found %d byte NES 2.0 file.\n", bytes.size());
     // TODO: Load NES 2.0 specific
     // Back-compat with ines 1.0
     LoadNes1File(bytes);
   } else if (is_ines) {
-    std::cout << "Found " << bytes.size() << " byte iNES 1.0 file." << std::endl;
+    VDBG("Found %d byte iNES 1.0 file.\n", bytes.size());
     LoadNes1File(bytes);
   } else {
     throw std::runtime_error("Rom file is not iNES format.");
@@ -119,7 +137,7 @@ void Cpu6502::LoadNes1File(std::vector<uint8_t> bytes) {
   uint8_t mapper_number = ((flags7 >> 4) << 4) | (flags6 >> 4);
 
   uint8_t prg_ram_size = bytes[8] == 0x0 ? static_cast<uint8_t>(0x2000) : bytes[8] * 0x2000;
-  DBG("Mapper ID %d PRG_ROM sz %d CHAR_ROM sz %d PRG_RAM sz %d\n",
+  VDBG("Mapper ID %d PRG_ROM sz %d CHAR_ROM sz %d PRG_RAM sz %d\n",
       mapper_number, prg_rom_size, chr_rom_size, prg_ram_size);
   
   if (chr_rom_size > 0) {
@@ -143,58 +161,72 @@ void Cpu6502::SetFlag(Cpu6502::Flag flag, bool val) {
   }
 
 }
-
+// C000  4C F5 C5  JMP $C5F5                       A:00 X:00 Y:00 P:24 SP:FD PPU:  0, 21 CYC:7
 uint8_t Cpu6502::NextImmediate() {
-  return memory_view_->Get(program_counter_++);
+  uint8_t val = memory_view_->Get(program_counter_++);
+  DBG("%02X     ", val);
+  return val;
 }
 uint16_t Cpu6502::NextZeroPage() {
-  return memory_view_->Get(program_counter_++);
+  uint16_t addr = memory_view_->Get(program_counter_++);
+  DBG("%02X     ", static_cast<uint8_t>(addr));
+  return addr;
 }
 uint16_t Cpu6502::NextZeroPageX() {
   uint16_t addr = memory_view_->Get(program_counter_++);
+  DBG("%02X     ", static_cast<uint8_t>(addr));
   addr = (addr + x_) % 0xFF;  // Add X to LSB of ZP
   return addr;
 }
 uint16_t Cpu6502::NextZeroPageY() {
   uint16_t addr = memory_view_->Get(program_counter_++);
+  DBG("%02X     ", static_cast<uint8_t>(addr));
   addr = (addr + y_) % 0xFF;  // Add Y to LSB of ZP
   return addr;
 }
 uint16_t Cpu6502::NextAbsolute() {
   uint16_t addr = memory_view_->Get16(program_counter_);
+  // return static_cast<uint16_t>(Get(addr + 1)) << 8 | Get(addr);
+  DBG("%02X %02X  ", static_cast<uint8_t>(addr), static_cast<uint8_t>(addr >> 8)); // low first
   program_counter_ += 2;
   return addr;
 }
 uint16_t Cpu6502::NextAbsoluteX() {
   uint16_t addr = memory_view_->Get16(program_counter_);
+  DBG("%02X %02X  ", static_cast<uint8_t>(addr), static_cast<uint8_t>(addr >> 8));
   program_counter_ += 2;
   return addr + x_;
 }
 uint16_t Cpu6502::NextAbsoluteY() {
   uint16_t addr = memory_view_->Get16(program_counter_);
+  DBG("%02X %02X  ", static_cast<uint8_t>(addr), static_cast<uint8_t>(addr >> 8));
   program_counter_ += 2;
   return addr + y_;
 }
 uint16_t Cpu6502::NextIndirectX() {
   // Get ZP, add X_ to LSB, then read full addr
   uint16_t zero_addr = memory_view_->Get(program_counter_++);
+  DBG("%02X     ", static_cast<uint8_t>(zero_addr));
   zero_addr = (zero_addr + x_) % 0xFF;
   return memory_view_->Get16(zero_addr);
 }
 uint16_t Cpu6502::NextIndirectY() {
   // get ZP addr, then read full addr from it and add Y
   uint16_t zero_addr = memory_view_->Get(program_counter_++);
+  DBG("%02X     ", static_cast<uint8_t>(zero_addr));
   uint16_t addr = memory_view_->Get16(zero_addr);
   return addr + y_;
 }
 uint16_t Cpu6502::NextAbsoluteIndirect() {
   uint16_t indirect = memory_view_->Get16(program_counter_);
+  DBG("%02X %02X  ", static_cast<uint8_t>(indirect), static_cast<uint8_t>(indirect >> 8));
   program_counter_ += 2;
   return memory_view_->Get16(indirect);
 }
 
 uint16_t Cpu6502::NextRelativeAddr() {
   uint8_t offset_uint = memory_view_->Get(program_counter_++);
+  DBG("%02X     ", static_cast<uint8_t>(offset_uint));
   // https://stackoverflow.com/questions/14623266/why-cant-i-reinterpret-cast-uint-to-int
   int8_t tmp;
   std::memcpy(&tmp, &offset_uint, sizeof(tmp));
@@ -256,7 +288,7 @@ void Cpu6502::ADC(AddressingMode mode) {
 
 void Cpu6502::JMP(AddressingMode mode) {
   uint16_t addr = NextAddr(mode);
-  DBG("JMP to %#06x\n", addr);
+  DBGPAD("JMP $%04X", addr);
   program_counter_ = addr;
 }
 
@@ -276,6 +308,11 @@ void Cpu6502::RTI(AddressingMode mode) {
 
 void Cpu6502::LDX(AddressingMode mode) {
   uint8_t val = NextVal(mode);
+  // need $addr = val or #$val for imm
+  // DBGPAD("LDX #$")
+  // this format messes everything up ughhhhhhhh
+// D1A8  A5 78     LDA $78 = 46                    A:46 X:23 Y:11 P:E5 SP:FB PPU: 34,151 CYC:3915
+// C5F5  A2 00     LDX #$00                        A:00 X:00 Y:00 P:24 SP:FD PPU:  0, 30 CYC:10
   SetFlag(Flag::Z, val == 0);
   SetFlag(Flag::N, !Pos(val));
   x_ = val;
@@ -477,5 +514,5 @@ void Cpu6502::BuildInstructionSet() {
   ADD_INSTR(0x10, BPL, AddressingMode::kRelative);
   ADD_INSTR(0x60, RTS, AddressingMode::kNone);
 
-  DBG("Instruction set built.\n");
+  VDBG("Instruction set built.\n");
 }
