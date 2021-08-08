@@ -116,6 +116,18 @@ void Cpu6502::RunCycle() {
     case 0x2C:
       BIT(opcode);
       break;
+    case 0x70:
+      BVS();
+      break;
+    case 0x50:
+      BVC();
+      break;
+    case 0x10:
+      BPL();
+      break;
+    case 0x60:
+      RTS();
+      break;
     default:
       DBG("OP %#04x.... ", opcode);
       throw std::runtime_error("Unimplemented opcode.");
@@ -422,8 +434,9 @@ void Cpu6502::STX(uint8_t op) {
 }
 
 void Cpu6502::JSR() {
+  uint16_t new_pc = NextAbsolute();
   PushStack16(program_counter_);
-  program_counter_ = NextAbsolute();
+  program_counter_ = new_pc;
   DBG("JSR to %#06x\n", program_counter_);
 }
 
@@ -529,7 +542,38 @@ void Cpu6502::BIT(uint8_t op) {
     val = VAL(NextAbsolute());
   }
   uint8_t res = val & a_;
+  DBG("BIT %#04x ( &A= %#04x )\n", val, res);
   SetFlag(Flag::Z, res == 0);
   SetFlag(Flag::V, Bit(6, val) == 1);
   SetFlag(Flag::N, Bit(7, val) == 1);
+}
+
+void Cpu6502::BVS() {
+  uint16_t addr = NextRelativeAddr();
+  if (GetFlag(Flag::V)) {
+    DBG("Branching to %#06x\n", addr);
+    program_counter_ = addr;
+  }
+}
+
+void Cpu6502::BVC() {
+  uint16_t addr = NextRelativeAddr();
+  if (!GetFlag(Flag::V)) {
+    DBG("Branching to %#06x\n", addr);
+    program_counter_ = addr;
+  }
+}
+
+void Cpu6502::BPL() {
+  uint16_t addr = NextRelativeAddr();
+  if (!GetFlag(Flag::N)) {
+    DBG("Branching to %#06x\n", addr);
+    program_counter_ = addr;
+  }
+}
+
+void Cpu6502::RTS() {
+  // should be c600 but getting c5fe, need 2 bytes somehow.
+  program_counter_ = PopStack16();
+  DBG("RTS to %#06x\n", program_counter_);
 }
