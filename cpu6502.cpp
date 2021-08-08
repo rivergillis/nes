@@ -1,6 +1,7 @@
 #include "cpu6502.h"
 
 #include <fstream>
+#include <functional>
 
 #include "common.h"
 #include "mappers/nrom_mapper.h"
@@ -36,102 +37,7 @@ void Cpu6502::RunCycle() {
   uint8_t opcode = memory_view_->Get(program_counter_);
   DBG("%s -- executing opcode %#04x\n", Status().c_str(), opcode);
   program_counter_++;
-  // TODO: Order these somehow
-  switch (opcode) {
-    case 0x69:
-    case 0x65:
-    case 0x75:
-    case 0x6D:
-    case 0x7D:
-    case 0x79:
-    case 0x61:
-    case 0x71:
-      ADC(opcode);
-      break;
-    case 0x4C:
-    case 0x6C:
-      JMP(opcode);
-      break;
-    case 0x00:
-      BRK();
-      break;
-    case 0x40:
-      RTI();
-      break;
-    case 0xA2:
-    case 0xA6:
-    case 0xB6:
-    case 0xAE:
-    case 0xBE:
-      LDX(opcode);
-      break;
-    case 0x86:
-    case 0x96:
-    case 0x8E:
-      STX(opcode);
-      break;
-    case 0x20:
-      JSR();
-      break;
-    case 0xEA:
-      break;  // NOP
-    case 0x38:
-      SEC();
-      break;
-    case 0xB0:
-      BCS();
-      break;
-    case 0x18:
-      CLC();
-      break;
-    case 0x90:
-      BCC();
-      break;
-    case 0xA9:
-    case 0xA5:
-    case 0xB5:
-    case 0xAD:
-    case 0xBD:
-    case 0xB9:
-    case 0xA1:
-    case 0xB1:
-      LDA(opcode);
-      break;
-    case 0xF0:
-      BEQ();
-      break;
-    case 0xD0:
-      BNE();
-      break;
-    case 0x85:
-    case 0x95:
-    case 0x8D:
-    case 0x9D:
-    case 0x99:
-    case 0x81:
-    case 0x91:
-      STA(opcode);
-      break;
-    case 0x24:
-    case 0x2C:
-      BIT(opcode);
-      break;
-    case 0x70:
-      BVS();
-      break;
-    case 0x50:
-      BVC();
-      break;
-    case 0x10:
-      BPL();
-      break;
-    case 0x60:
-      RTS();
-      break;
-    default:
-      DBG("OP %#04x.... ", opcode);
-      throw std::runtime_error("Unimplemented opcode.");
-  }
+  instructions_.at(opcode).impl();
 }
 
 void Cpu6502::Reset(const std::string& file_path) {
@@ -154,6 +60,8 @@ void Cpu6502::Reset(const std::string& file_path) {
   a_ = x_ = y_ = 0;
   p_ = 0x24;  // for nestest golden
   stack_pointer_ = 0xFF;
+
+  BuildInstructionSet();
 }
 
 void Cpu6502::LoadCartrtidgeFile(const std::string& file_path) {
@@ -336,29 +244,8 @@ std::string Cpu6502::Status() {
     program_counter_, a_, x_, y_, p_, stack_pointer_);
 }
 
-void Cpu6502::ADC(uint8_t op) {
-  uint8_t val = 0;
-
-  if (op == 0x61) {
-    val = VAL(NextIndirectX());
-  } if (op == 0x65) {
-    val = VAL(NextZeroPage());
-  } else if (op == 0x69) {
-    val = NextImmediate();
-  } else if (op == 0x6D) {
-    val = VAL(NextAbsolute());
-  } else if (op == 0x71) {
-    val = VAL(NextIndirectY());
-  } else if (op == 0x75) {
-    val = VAL(NextZeroPageX());
-  } else if (op == 0x79) {
-    val = VAL(NextAbsoluteY());
-  } else if (op == 0x7D) {
-    val = VAL(NextAbsoluteX());
-  } else {
-    throw std::runtime_error("Bad opcode on ADC");
-  }
-
+void Cpu6502::ADC(AddressingMode mode) {
+  uint8_t val = NextVal(mode);
   uint16_t new_a = a_ + val + GetFlag(Flag::C);
   SetFlag(Flag::C, new_a > 0xFF);
   SetFlag(Flag::V, Pos(a_) && Pos(val) && !Pos(new_a));
@@ -367,20 +254,13 @@ void Cpu6502::ADC(uint8_t op) {
   a_ = new_a;
 }
 
-void Cpu6502::JMP(uint8_t op) {
-  uint16_t addr = 0;
-  if (op == 0x4c) {
-    addr = NextAbsolute();
-  } else if (op == 0x6c) {
-    addr = NextAbsoluteIndirect();
-  } else {
-    throw std::runtime_error("Bad opcode on JMP");
-  }
+void Cpu6502::JMP(AddressingMode mode) {
+  uint16_t addr = NextAddr(mode);
   DBG("JMP to %#06x\n", addr);
   program_counter_ = addr;
 }
 
-void Cpu6502::BRK() {
+void Cpu6502::BRK(AddressingMode mode) {
   PushStack16(program_counter_);  // PC is already +1 from reading instr.
   PushStack(p_ | 0b0011'0000);  // B=0b11
   program_counter_ = memory_view_->Get16(0xFFFE);
@@ -388,159 +268,91 @@ void Cpu6502::BRK() {
   DBG("BRK to %#06x\n", program_counter_);
 }
 
-void Cpu6502::RTI() {
+void Cpu6502::RTI(AddressingMode mode) {
   p_ = (PopStack() & 0b1100'1111);  // clear B
   program_counter_ = PopStack16();
   DBG("RTI to %#06x\n", program_counter_);
 }
 
-void Cpu6502::LDX(uint8_t op) {
-  uint8_t val = 0;
-  if (op == 0xA2) {
-    val = NextImmediate();
-  } else if (op == 0xA6) {
-    val = VAL(NextZeroPage());
-  } else if (op == 0xB6) {
-    val = VAL(NextZeroPageY());
-  } else if (op == 0xAE) {
-    val = VAL(NextAbsolute());
-  } else if (op == 0xBE) {
-    val = VAL(NextAbsoluteY());
-  } else {
-    throw std::runtime_error("Bad opcode in LDX");
-  }
-
-  // We set the negative flag here for 0....
+void Cpu6502::LDX(AddressingMode mode) {
+  uint8_t val = NextVal(mode);
   SetFlag(Flag::Z, val == 0);
   SetFlag(Flag::N, !Pos(val));
   x_ = val;
   DBG("X <= %#04x\n", x_);
 }
 
-void Cpu6502::STX(uint8_t op) {
-  uint16_t addr = 0;
-  if (op == 0x86) {
-    addr = NextZeroPage();
-  } else if (op == 0x96) {
-    addr = NextZeroPageY();
-  } else if (op == 0x8E) {
-    addr = NextAbsolute();
-  } else {
-    throw std::runtime_error("Bad opcode in STX");
-  }
-
+void Cpu6502::STX(AddressingMode mode) {
+  uint16_t addr = NextAddr(mode);
   memory_view_->Set(addr, x_);
   DBG("%#06x <= X\n", addr);
 }
 
-void Cpu6502::JSR() {
-  uint16_t new_pc = NextAbsolute();
+void Cpu6502::JSR(AddressingMode mode) {
+  uint16_t new_pc = NextAddr(mode);
   PushStack16(program_counter_);
   program_counter_ = new_pc;
   DBG("JSR to %#06x\n", program_counter_);
 }
 
-void Cpu6502::SEC() {
+void Cpu6502::SEC(AddressingMode mode) {
   SetFlag(Flag::C, true);
   DBG("C = 1\n");
 }
 
-void Cpu6502::BCS() {
-  uint16_t addr = NextRelativeAddr();
+void Cpu6502::BCS(AddressingMode mode) {
+  uint16_t addr = NextAddr(mode);
   if (GetFlag(Flag::C)) {
     DBG("Branching to %#06x\n", addr);
     program_counter_ = addr;
   }
 }
 
-void Cpu6502::CLC() {
+void Cpu6502::CLC(AddressingMode mode) {
   SetFlag(Flag::C, false);
   DBG("C = 0\n");
 }
 
-void Cpu6502::BCC() {
-  uint16_t addr = NextRelativeAddr();
+void Cpu6502::BCC(AddressingMode mode) {
+  uint16_t addr = NextAddr(mode);
   if (!GetFlag(Flag::C)) {
     DBG("Branching to %#06x\n", addr);
     program_counter_ = addr;
   }
 }
 
-void Cpu6502::LDA(uint8_t op) {
-  uint8_t val = 0;
-  if (op == 0xA9) {
-    val = NextImmediate();
-  } else if (op == 0xA5) {
-    val = VAL(NextZeroPage());
-  } else if (op == 0xB5) {
-    val = VAL(NextZeroPageX());
-  } else if (op == 0xAD) {
-    val = VAL(NextAbsolute());
-  } else if (op == 0xBD) {
-    val = VAL(NextAbsoluteX());
-  } else if (op == 0xB9) {
-    val = VAL(NextAbsoluteY());
-  } else if (op == 0xA1) {
-    val = VAL(NextIndirectX());
-  } else if (op == 0xB1) {
-    val = VAL(NextIndirectY());
-  } else {
-    throw std::runtime_error("Bad opcode in LDA");
-  }
-
+void Cpu6502::LDA(AddressingMode mode) {
+  uint8_t val = NextVal(mode);
   SetFlag(Flag::Z, val == 0);
   SetFlag(Flag::N, !Pos(val));
   a_ = val;
   DBG("A <= %#04x\n", a_);
 }
 
-void Cpu6502::BEQ() {
-  uint16_t addr = NextRelativeAddr();
+void Cpu6502::BEQ(AddressingMode mode) {
+  uint16_t addr = NextAddr(mode);
   if (GetFlag(Flag::Z)) {
     DBG("Branching to %#06x\n", addr);
     program_counter_ = addr;
   }
 }
 
-void Cpu6502::BNE() {
-  uint16_t addr = NextRelativeAddr();
+void Cpu6502::BNE(AddressingMode mode) {
+  uint16_t addr = NextAddr(mode);
   if (!GetFlag(Flag::Z)) {
     DBG("Branching to %#06x\n", addr);
     program_counter_ = addr;
   }
 }
 
-void Cpu6502::STA(uint8_t op) {
-  uint16_t addr = 0;
-  if (op == 0x85) {
-    addr = NextZeroPage();
-  } else if (op == 0x95) {
-    addr = NextZeroPageX();
-  } else if (op == 0x8D) {
-    addr = NextAbsolute();
-  } else if (op == 0x9D) {
-    addr = NextAbsoluteX();
-  } else if (op == 0x99) {
-    addr = NextAbsoluteY();
-  } else if (op == 0x81) {
-    addr = NextIndirectX();
-  } else if (op == 0x91) {
-    addr = NextIndirectY();
-  } else {
-    throw std::runtime_error("Bad opcode in STX");
-  }
-
+void Cpu6502::STA(AddressingMode mode) {
+  uint16_t addr = NextAddr(mode);
   memory_view_->Set(addr, a_);
   DBG("%#06x <= A\n", addr);
 }
 
-void Cpu6502::BIT(uint8_t op) {
-  uint8_t val = 0;
-  if (op == 0x24) {
-    val = VAL(NextZeroPage());
-  } else if (op == 0x2C) {
-    val = VAL(NextAbsolute());
-  }
+void Cpu6502::BIT(AddressingMode mode) {
+  uint8_t val = NextVal(mode);
   uint8_t res = val & a_;
   DBG("BIT %#04x ( &A= %#04x )\n", val, res);
   SetFlag(Flag::Z, res == 0);
@@ -548,31 +360,122 @@ void Cpu6502::BIT(uint8_t op) {
   SetFlag(Flag::N, Bit(7, val) == 1);
 }
 
-void Cpu6502::BVS() {
-  uint16_t addr = NextRelativeAddr();
+void Cpu6502::BVS(AddressingMode mode) {
+  uint16_t addr = NextAddr(mode);
   if (GetFlag(Flag::V)) {
     DBG("Branching to %#06x\n", addr);
     program_counter_ = addr;
   }
 }
 
-void Cpu6502::BVC() {
-  uint16_t addr = NextRelativeAddr();
+void Cpu6502::BVC(AddressingMode mode) {
+  uint16_t addr = NextAddr(mode);
   if (!GetFlag(Flag::V)) {
     DBG("Branching to %#06x\n", addr);
     program_counter_ = addr;
   }
 }
 
-void Cpu6502::BPL() {
-  uint16_t addr = NextRelativeAddr();
+void Cpu6502::BPL(AddressingMode mode) {
+  uint16_t addr = NextAddr(mode);
   if (!GetFlag(Flag::N)) {
     DBG("Branching to %#06x\n", addr);
     program_counter_ = addr;
   }
 }
 
-void Cpu6502::RTS() {
+void Cpu6502::RTS(AddressingMode mode) {
   program_counter_ = PopStack16();
   DBG("RTS to %#06x\n", program_counter_);
+}
+
+void Cpu6502::NOP(AddressingMode mode) { }
+
+uint16_t Cpu6502::NextAddr(AddressingMode mode) {
+  switch (mode) {
+    case AddressingMode::kZeroPage:
+      return NextZeroPage();
+    case AddressingMode::kZeroPageX:
+      return NextZeroPageX();
+    case AddressingMode::kZeroPageY:
+      return NextZeroPageY();
+    case AddressingMode::kAbsolute:
+      return NextAbsolute();
+    case AddressingMode::kAbsoluteX:
+      return NextAbsoluteX();
+    case AddressingMode::kAbsoluteY:
+      return NextAbsoluteY();
+    case AddressingMode::kIndirectX:
+      return NextIndirectX();
+    case AddressingMode::kIndirectY:
+      return NextIndirectY();
+    case AddressingMode::kAbsoluteIndirect:
+      return NextAbsoluteIndirect();
+    case AddressingMode::kRelative:
+      return NextRelativeAddr();
+    default:
+      throw std::runtime_error("Undefined addressing mode.");
+  }
+}
+
+uint8_t Cpu6502::NextVal(AddressingMode mode) {
+  if (mode == AddressingMode::kImmediate) {
+    return NextImmediate();
+  }
+  return VAL(NextAddr(mode));
+}
+
+void Cpu6502::BuildInstructionSet() {
+  #define ADD_INSTR(op, name, mode) instructions_[op] = {#name, [this]() { name(mode); }};
+  ADD_INSTR(0x69, ADC, AddressingMode::kImmediate);
+  ADD_INSTR(0x65, ADC, AddressingMode::kZeroPage);
+  ADD_INSTR(0x75, ADC, AddressingMode::kZeroPageX);
+  ADD_INSTR(0x6D, ADC, AddressingMode::kAbsolute);
+  ADD_INSTR(0x7D, ADC, AddressingMode::kAbsoluteX);
+  ADD_INSTR(0x79, ADC, AddressingMode::kAbsoluteY);
+  ADD_INSTR(0x61, ADC, AddressingMode::kIndirectX);
+  ADD_INSTR(0x71, ADC, AddressingMode::kIndirectY);
+  ADD_INSTR(0x4C, JMP, AddressingMode::kAbsolute);
+  ADD_INSTR(0x6C, JMP, AddressingMode::kAbsoluteIndirect);
+  ADD_INSTR(0x00, BRK, AddressingMode::kNone);
+  ADD_INSTR(0x40, BRK, AddressingMode::kNone);
+  ADD_INSTR(0xA2, LDX, AddressingMode::kImmediate);
+  ADD_INSTR(0xA6, LDX, AddressingMode::kZeroPage);
+  ADD_INSTR(0xB6, LDX, AddressingMode::kZeroPageY);
+  ADD_INSTR(0xAE, LDX, AddressingMode::kAbsolute);
+  ADD_INSTR(0xBE, LDX, AddressingMode::kAbsoluteY);
+  ADD_INSTR(0x86, STX, AddressingMode::kZeroPage);
+  ADD_INSTR(0x96, STX, AddressingMode::kZeroPageY);
+  ADD_INSTR(0x8E, STX, AddressingMode::kAbsolute);
+  ADD_INSTR(0x20, JSR, AddressingMode::kAbsolute);
+  ADD_INSTR(0xEA, NOP, AddressingMode::kNone);
+  ADD_INSTR(0x38, SEC, AddressingMode::kNone);
+  ADD_INSTR(0xB0, BCS, AddressingMode::kRelative);
+  ADD_INSTR(0x18, CLC, AddressingMode::kNone);
+  ADD_INSTR(0x90, BCC, AddressingMode::kRelative);
+  ADD_INSTR(0xA9, LDA, AddressingMode::kImmediate);
+  ADD_INSTR(0xA5, LDA, AddressingMode::kZeroPage);
+  ADD_INSTR(0xB5, LDA, AddressingMode::kZeroPageX);
+  ADD_INSTR(0xAD, LDA, AddressingMode::kAbsolute);
+  ADD_INSTR(0xBD, LDA, AddressingMode::kAbsoluteX);
+  ADD_INSTR(0xB9, LDA, AddressingMode::kAbsoluteY);
+  ADD_INSTR(0xA1, LDA, AddressingMode::kIndirectX);
+  ADD_INSTR(0xB1, LDA, AddressingMode::kIndirectY);
+  ADD_INSTR(0xF0, BEQ, AddressingMode::kRelative);
+  ADD_INSTR(0xD0, BNE, AddressingMode::kRelative);
+  ADD_INSTR(0x85, STA, AddressingMode::kZeroPage);
+  ADD_INSTR(0x95, STA, AddressingMode::kZeroPageX);
+  ADD_INSTR(0x8D, STA, AddressingMode::kAbsolute);
+  ADD_INSTR(0x9D, STA, AddressingMode::kAbsoluteX);
+  ADD_INSTR(0x99, STA, AddressingMode::kAbsoluteY);
+  ADD_INSTR(0x81, STA, AddressingMode::kIndirectX);
+  ADD_INSTR(0x91, STA, AddressingMode::kIndirectY);
+  ADD_INSTR(0x24, BIT, AddressingMode::kZeroPage);
+  ADD_INSTR(0x2C, BIT, AddressingMode::kAbsolute);
+  ADD_INSTR(0x70, BVS, AddressingMode::kRelative);
+  ADD_INSTR(0x50, BVC, AddressingMode::kRelative);
+  ADD_INSTR(0x10, BPL, AddressingMode::kRelative);
+  ADD_INSTR(0x60, RTS, AddressingMode::kNone);
+
+  DBG("Instruction set built.\n");
 }

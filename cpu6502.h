@@ -1,6 +1,8 @@
 #ifndef NES_CPU6502_H_
 #define NES_CPU6502_H_
 
+#include <unordered_map>
+
 #include "common.h"
 #include "mapper.h"
 #include "ppu.h"
@@ -18,6 +20,7 @@ class Cpu6502 {
     // Resets the CPU state, loads the cartridge,
     // sets the next instruction baded on reset vector.
     void Reset(const std::string& file_path);
+    void BuildInstructionSet();
 
     void LoadCartrtidgeFile(const std::string& file_path);
     // Loads an iNES 1.0 file
@@ -45,6 +48,23 @@ class Cpu6502 {
     // For branching, decodes next offset into an address.
     uint16_t NextRelativeAddr();
 
+    enum class AddressingMode {
+      kImmediate,
+      kZeroPage,
+      kZeroPageX,
+      kZeroPageY,
+      kAbsolute,
+      kAbsoluteX,
+      kAbsoluteY,
+      kIndirectX,
+      kIndirectY,
+      kAbsoluteIndirect,
+      kRelative,
+      kNone // needed?
+    };
+    uint16_t NextAddr(AddressingMode mode);
+    uint8_t NextVal(AddressingMode mdoe);
+
     void PushStack(uint8_t val);
     void PushStack16(uint16_t val);
     uint8_t PopStack();
@@ -56,26 +76,35 @@ class Cpu6502 {
     std::string PC();
 
     /// INSTRUCTIONS
-    void ADC(uint8_t op);
-    void JMP(uint8_t op);
-    void BRK();
-    void RTI();
-    void LDX(uint8_t op);
-    void STX(uint8_t op);
-    void JSR();
-    void SEC();
-    void BCS();
-    void CLC();
-    void BCC();
-    void LDA(uint8_t op);
-    void BEQ();
-    void BNE();
-    void STA(uint8_t op);
-    void BIT(uint8_t op);
-    void BVS();
-    void BVC();
-    void BPL();
-    void RTS();
+    #define DEF_INSTR(name) void name(AddressingMode mode)
+    DEF_INSTR(ADC);
+    DEF_INSTR(JMP);
+    DEF_INSTR(BRK);
+    DEF_INSTR(RTI);
+    DEF_INSTR(LDX);
+    DEF_INSTR(STX);
+    DEF_INSTR(JSR);
+    DEF_INSTR(SEC);
+    DEF_INSTR(BCS);
+    DEF_INSTR(CLC);
+    DEF_INSTR(BCC);
+    DEF_INSTR(LDA);
+    DEF_INSTR(BEQ);
+    DEF_INSTR(BNE);
+    DEF_INSTR(STA);
+    DEF_INSTR(BIT);
+    DEF_INSTR(BVS);
+    DEF_INSTR(BVC);
+    DEF_INSTR(BPL);
+    DEF_INSTR(RTS);
+    DEF_INSTR(NOP);
+
+    // Instruction set keyed on opcode.
+    struct Instruction {
+      std::string name = "";
+      std::function<void(void)> impl = nullptr; // addressing mode was bound
+    };
+    std::unordered_map<uint8_t, Instruction> instructions_;
 
     // Points to next address to execute
     uint16_t program_counter_ = 0;
