@@ -522,7 +522,6 @@ void Cpu6502::STA(uint8_t op) {
 }
 
 void Cpu6502::BIT(uint8_t op) {
-  // todo: something wrong. P should be 0xE4 after this.
   uint8_t val = 0;
   if (op == 0x24) {
     val = VAL(NextZeroPage());
@@ -531,7 +530,6 @@ void Cpu6502::BIT(uint8_t op) {
   }
   uint8_t res = val & a_;
   SetFlag(Flag::Z, res == 0);
-  // Should be setting N and V high..
-  SetFlag(Flag::V, Bit(val, 6) == 1);
-  SetFlag(Flag::N, Bit(val, 7) == 1);
+  SetFlag(Flag::V, Bit(6, val) == 1);
+  SetFlag(Flag::N, Bit(7, val) == 1);
 }
