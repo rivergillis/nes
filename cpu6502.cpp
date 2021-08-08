@@ -573,7 +573,6 @@ void Cpu6502::BPL() {
 }
 
 void Cpu6502::RTS() {
-  // should be c600 but getting c5fe, need 2 bytes somehow.
   program_counter_ = PopStack16();
   DBG("RTS to %#06x\n", program_counter_);
 }
