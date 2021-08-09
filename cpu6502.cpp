@@ -11,8 +11,8 @@
 
 namespace { 
 
-#define VAL(a) memory_view_->Get(a);
-#define DBGPAD(...) DBG("%-32s", string_format(__VA_ARGS__).c_str());
+#define VAL(a) memory_view_->Get(a)
+#define DBGPAD(...) DBG("%-32s", string_format(__VA_ARGS__).c_str())
 
 // Used for nestest log goldens
 void DBG(const char* str, ...) {
@@ -277,7 +277,7 @@ std::string Cpu6502::Status() {
 }
 
 void Cpu6502::ADC(AddressingMode mode) {
-  uint8_t val = NextVal(mode);
+  uint8_t val = NextAddrVal(mode).val;
   uint16_t new_a = a_ + val + GetFlag(Flag::C);
   SetFlag(Flag::C, new_a > 0xFF);
   SetFlag(Flag::V, Pos(a_) && Pos(val) && !Pos(new_a));
@@ -287,7 +287,7 @@ void Cpu6502::ADC(AddressingMode mode) {
 }
 
 void Cpu6502::JMP(AddressingMode mode) {
-  uint16_t addr = NextAddr(mode);
+  uint16_t addr = NextAddrVal(mode).addr;
   DBGPAD("JMP $%04X", addr);
   program_counter_ = addr;
 }
@@ -307,26 +307,22 @@ void Cpu6502::RTI(AddressingMode mode) {
 }
 
 void Cpu6502::LDX(AddressingMode mode) {
-  uint8_t val = NextVal(mode);
-  // need $addr = val or #$val for imm
-  // DBGPAD("LDX #$")
-  // this format messes everything up ughhhhhhhh
-// D1A8  A5 78     LDA $78 = 46                    A:46 X:23 Y:11 P:E5 SP:FB PPU: 34,151 CYC:3915
-// C5F5  A2 00     LDX #$00                        A:00 X:00 Y:00 P:24 SP:FD PPU:  0, 30 CYC:10
+  AddrVal addrval = NextAddrVal(mode);
+  DBGPAD("LDX %s", AddrValString(addrval, mode).c_str());
+  uint8_t val = addrval.val;
   SetFlag(Flag::Z, val == 0);
   SetFlag(Flag::N, !Pos(val));
   x_ = val;
-  DBG("X <= %#04x\n", x_);
 }
 
 void Cpu6502::STX(AddressingMode mode) {
-  uint16_t addr = NextAddr(mode);
+  uint16_t addr = NextAddrVal(mode).addr;
   memory_view_->Set(addr, x_);
   DBG("%#06x <= X\n", addr);
 }
 
 void Cpu6502::JSR(AddressingMode mode) {
-  uint16_t new_pc = NextAddr(mode);
+  uint16_t new_pc = NextAddrVal(mode).addr;
   PushStack16(program_counter_);
   program_counter_ = new_pc;
   DBG("JSR to %#06x\n", program_counter_);
@@ -338,7 +334,7 @@ void Cpu6502::SEC(AddressingMode mode) {
 }
 
 void Cpu6502::BCS(AddressingMode mode) {
-  uint16_t addr = NextAddr(mode);
+  uint16_t addr = NextAddrVal(mode).addr;
   if (GetFlag(Flag::C)) {
     DBG("Branching to %#06x\n", addr);
     program_counter_ = addr;
@@ -351,7 +347,7 @@ void Cpu6502::CLC(AddressingMode mode) {
 }
 
 void Cpu6502::BCC(AddressingMode mode) {
-  uint16_t addr = NextAddr(mode);
+  uint16_t addr = NextAddrVal(mode).addr;
   if (!GetFlag(Flag::C)) {
     DBG("Branching to %#06x\n", addr);
     program_counter_ = addr;
@@ -359,7 +355,7 @@ void Cpu6502::BCC(AddressingMode mode) {
 }
 
 void Cpu6502::LDA(AddressingMode mode) {
-  uint8_t val = NextVal(mode);
+  uint8_t val = NextAddrVal(mode).val;
   SetFlag(Flag::Z, val == 0);
   SetFlag(Flag::N, !Pos(val));
   a_ = val;
@@ -367,7 +363,7 @@ void Cpu6502::LDA(AddressingMode mode) {
 }
 
 void Cpu6502::BEQ(AddressingMode mode) {
-  uint16_t addr = NextAddr(mode);
+  uint16_t addr = NextAddrVal(mode).addr;
   if (GetFlag(Flag::Z)) {
     DBG("Branching to %#06x\n", addr);
     program_counter_ = addr;
@@ -375,7 +371,7 @@ void Cpu6502::BEQ(AddressingMode mode) {
 }
 
 void Cpu6502::BNE(AddressingMode mode) {
-  uint16_t addr = NextAddr(mode);
+  uint16_t addr = NextAddrVal(mode).addr;
   if (!GetFlag(Flag::Z)) {
     DBG("Branching to %#06x\n", addr);
     program_counter_ = addr;
@@ -383,13 +379,13 @@ void Cpu6502::BNE(AddressingMode mode) {
 }
 
 void Cpu6502::STA(AddressingMode mode) {
-  uint16_t addr = NextAddr(mode);
+  uint16_t addr = NextAddrVal(mode).addr;
   memory_view_->Set(addr, a_);
   DBG("%#06x <= A\n", addr);
 }
 
 void Cpu6502::BIT(AddressingMode mode) {
-  uint8_t val = NextVal(mode);
+  uint8_t val = NextAddrVal(mode).val;
   uint8_t res = val & a_;
   DBG("BIT %#04x ( &A= %#04x )\n", val, res);
   SetFlag(Flag::Z, res == 0);
@@ -398,7 +394,7 @@ void Cpu6502::BIT(AddressingMode mode) {
 }
 
 void Cpu6502::BVS(AddressingMode mode) {
-  uint16_t addr = NextAddr(mode);
+  uint16_t addr = NextAddrVal(mode).addr;
   if (GetFlag(Flag::V)) {
     DBG("Branching to %#06x\n", addr);
     program_counter_ = addr;
@@ -406,7 +402,7 @@ void Cpu6502::BVS(AddressingMode mode) {
 }
 
 void Cpu6502::BVC(AddressingMode mode) {
-  uint16_t addr = NextAddr(mode);
+  uint16_t addr = NextAddrVal(mode).addr;
   if (!GetFlag(Flag::V)) {
     DBG("Branching to %#06x\n", addr);
     program_counter_ = addr;
@@ -414,7 +410,7 @@ void Cpu6502::BVC(AddressingMode mode) {
 }
 
 void Cpu6502::BPL(AddressingMode mode) {
-  uint16_t addr = NextAddr(mode);
+  uint16_t addr = NextAddrVal(mode).addr;
   if (!GetFlag(Flag::N)) {
     DBG("Branching to %#06x\n", addr);
     program_counter_ = addr;
@@ -451,15 +447,48 @@ uint16_t Cpu6502::NextAddr(AddressingMode mode) {
     case AddressingMode::kRelative:
       return NextRelativeAddr();
     default:
-      throw std::runtime_error("Undefined addressing mode.");
+      throw std::runtime_error("Undefined addressing mode in NextAddr.");
   }
 }
 
-uint8_t Cpu6502::NextVal(AddressingMode mode) {
+Cpu6502::AddrVal Cpu6502::NextAddrVal(AddressingMode mode) {
   if (mode == AddressingMode::kImmediate) {
-    return NextImmediate();
+    return {0, NextImmediate()};
   }
-  return VAL(NextAddr(mode));
+  AddrVal addrval = {};
+  addrval.addr = NextAddr(mode);
+  addrval.val = VAL(addrval.addr);
+  return addrval;
+}
+
+std::string Cpu6502::AddrValString(AddrVal addrval, AddressingMode mode)  {
+  switch (mode) {
+    case AddressingMode::kImmediate:
+      return string_format("#$%02X", addrval.val);
+    case AddressingMode::kZeroPage:
+      return string_format("$%02X = %02X", addrval.addr, addrval.val);
+    case AddressingMode::kZeroPageX:
+      throw std::runtime_error("Undefined addressing mode.");
+    case AddressingMode::kZeroPageY:
+      throw std::runtime_error("Undefined addressing mode.");
+    case AddressingMode::kAbsolute:
+      throw std::runtime_error("Undefined addressing mode.");
+    case AddressingMode::kAbsoluteX:
+      throw std::runtime_error("Undefined addressing mode.");
+    case AddressingMode::kAbsoluteY:
+      throw std::runtime_error("Undefined addressing mode.");
+    case AddressingMode::kIndirectX:
+      throw std::runtime_error("Undefined addressing mode.");
+    case AddressingMode::kIndirectY:
+      throw std::runtime_error("Undefined addressing mode.");
+    case AddressingMode::kAbsoluteIndirect:
+      throw std::runtime_error("Undefined addressing mode.");
+    case AddressingMode::kRelative:
+      throw std::runtime_error("Undefined addressing mode.");
+    case AddressingMode::kNone:
+      return "";
+  }
+  // TODO: Handle the rest of the addr modes.
 }
 
 void Cpu6502::BuildInstructionSet() {

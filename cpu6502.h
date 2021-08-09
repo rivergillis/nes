@@ -33,6 +33,10 @@ class Cpu6502 {
     bool GetFlag(Flag flag);
     void SetFlag(Flag flag, bool val);
 
+    struct AddrVal {
+      uint16_t addr = 0;  // unused for kImmediate
+      uint8_t val = 0;    // value at addr
+    };
     /// Addressing modes -- affects program_counter
     // These all return addresses except NextImmediate()
     uint8_t NextImmediate();
@@ -63,13 +67,14 @@ class Cpu6502 {
       kNone // needed?
     };
     uint16_t NextAddr(AddressingMode mode);
-    uint8_t NextVal(AddressingMode mdoe);
+    AddrVal NextAddrVal(AddressingMode mode);
 
     void PushStack(uint8_t val);
     void PushStack16(uint16_t val);
     uint8_t PopStack();
     uint16_t PopStack16();
 
+    std::string AddrValString(AddrVal addrval, AddressingMode mode);
     void DbgMem();
     void DbgStack();
     std::string Status();
