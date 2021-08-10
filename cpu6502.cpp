@@ -13,6 +13,7 @@ namespace {
 
 #define VAL(a) memory_view_->Get(a)
 #define DBGPAD(...) DBG("%-32s", string_format(__VA_ARGS__).c_str())
+#define DBGPADSINGLE(x) DBG("       "); DBGPAD("%s", x);
 
 // Used for nestest log goldens
 void DBG(const char* str, ...) {
@@ -45,10 +46,7 @@ Cpu6502::Cpu6502(const std::string& file_path) {
 }
 
 void Cpu6502::RunCycle() {
-// C000  4C F5 C5  JMP $C5F5                       A:00 X:00 Y:00 P:24 SP:FD PPU:  0, 21 CYC:7
-// PC    opcode + bytes read   decoded name + addressing    status
-// here   instr                   instr                       here
-// so instr needs to know name
+  // TODO: Update how SP is printed
   std::string prev_flags = string_format("A:%02X X:%02X Y:%02X P:%02X SP:%02X",
     a_, x_, y_, p_, stack_pointer_);
   uint8_t opcode = memory_view_->Get(program_counter_);
@@ -277,7 +275,9 @@ std::string Cpu6502::Status() {
 }
 
 void Cpu6502::ADC(AddressingMode mode) {
-  uint8_t val = NextAddrVal(mode).val;
+  AddrVal addrval = NextAddrVal(mode);
+  uint8_t val = addrval.val;
+  DBGPAD("ADC %s", AddrValString(addrval, mode).c_str());
   uint16_t new_a = a_ + val + GetFlag(Flag::C);
   SetFlag(Flag::C, new_a > 0xFF);
   SetFlag(Flag::V, Pos(a_) && Pos(val) && !Pos(new_a));
@@ -287,8 +287,9 @@ void Cpu6502::ADC(AddressingMode mode) {
 }
 
 void Cpu6502::JMP(AddressingMode mode) {
-  uint16_t addr = NextAddrVal(mode).addr;
-  DBGPAD("JMP $%04X", addr);
+  AddrVal addrval = NextAddrVal(mode);
+  uint16_t addr = addrval.addr;
+  DBGPAD("JMP %s", AddrValString(addrval, mode).c_str());
   program_counter_ = addr;
 }
 
@@ -297,132 +298,146 @@ void Cpu6502::BRK(AddressingMode mode) {
   PushStack(p_ | 0b0011'0000);  // B=0b11
   program_counter_ = memory_view_->Get16(0xFFFE);
   SetFlag(Flag::I, true);
-  DBG("BRK to %#06x\n", program_counter_);
+  DBGPADSINGLE("BRK");
 }
 
 void Cpu6502::RTI(AddressingMode mode) {
   p_ = (PopStack() & 0b1100'1111);  // clear B
   program_counter_ = PopStack16();
-  DBG("RTI to %#06x\n", program_counter_);
+  DBGPADSINGLE("RTI");
 }
 
 void Cpu6502::LDX(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
-  DBGPAD("LDX %s", AddrValString(addrval, mode).c_str());
   uint8_t val = addrval.val;
+  DBGPAD("LDX %s", AddrValString(addrval, mode).c_str());
   SetFlag(Flag::Z, val == 0);
   SetFlag(Flag::N, !Pos(val));
   x_ = val;
 }
 
 void Cpu6502::STX(AddressingMode mode) {
-  uint16_t addr = NextAddrVal(mode).addr;
+  AddrVal addrval = NextAddrVal(mode);
+  uint16_t addr = addrval.addr;
+  DBGPAD("STX %s", AddrValString(addrval, mode).c_str());
   memory_view_->Set(addr, x_);
-  DBG("%#06x <= X\n", addr);
 }
 
 void Cpu6502::JSR(AddressingMode mode) {
-  uint16_t new_pc = NextAddrVal(mode).addr;
+  AddrVal addrval = NextAddrVal(mode);
+  uint16_t new_pc = addrval.addr;
+  DBGPAD("JSR %s", AddrValString(addrval, mode).c_str());
   PushStack16(program_counter_);
   program_counter_ = new_pc;
-  DBG("JSR to %#06x\n", program_counter_);
 }
 
 void Cpu6502::SEC(AddressingMode mode) {
   SetFlag(Flag::C, true);
-  DBG("C = 1\n");
+  DBGPADSINGLE("SEC");
 }
 
 void Cpu6502::BCS(AddressingMode mode) {
-  uint16_t addr = NextAddrVal(mode).addr;
+  AddrVal addrval = NextAddrVal(mode);
+  uint16_t addr = addrval.addr;
+  DBGPAD("BCS %s", AddrValString(addrval, mode).c_str());
   if (GetFlag(Flag::C)) {
-    DBG("Branching to %#06x\n", addr);
     program_counter_ = addr;
   }
 }
 
 void Cpu6502::CLC(AddressingMode mode) {
   SetFlag(Flag::C, false);
-  DBG("C = 0\n");
+  DBGPADSINGLE("CLC");
 }
 
 void Cpu6502::BCC(AddressingMode mode) {
-  uint16_t addr = NextAddrVal(mode).addr;
+  AddrVal addrval = NextAddrVal(mode);
+  uint16_t addr = addrval.addr;
+  DBGPAD("BCC %s", AddrValString(addrval, mode).c_str());
   if (!GetFlag(Flag::C)) {
-    DBG("Branching to %#06x\n", addr);
     program_counter_ = addr;
   }
 }
 
 void Cpu6502::LDA(AddressingMode mode) {
-  uint8_t val = NextAddrVal(mode).val;
+  AddrVal addrval = NextAddrVal(mode);
+  uint8_t val = addrval.val;
+  DBGPAD("LDA %s", AddrValString(addrval, mode).c_str());
   SetFlag(Flag::Z, val == 0);
   SetFlag(Flag::N, !Pos(val));
   a_ = val;
-  DBG("A <= %#04x\n", a_);
 }
 
 void Cpu6502::BEQ(AddressingMode mode) {
-  uint16_t addr = NextAddrVal(mode).addr;
+  AddrVal addrval = NextAddrVal(mode);
+  uint16_t addr = addrval.addr;
+  DBGPAD("BEQ %s", AddrValString(addrval, mode).c_str());
   if (GetFlag(Flag::Z)) {
-    DBG("Branching to %#06x\n", addr);
     program_counter_ = addr;
   }
 }
 
 void Cpu6502::BNE(AddressingMode mode) {
-  uint16_t addr = NextAddrVal(mode).addr;
+  AddrVal addrval = NextAddrVal(mode);
+  uint16_t addr = addrval.addr;
+  DBGPAD("BNE %s", AddrValString(addrval, mode).c_str());
   if (!GetFlag(Flag::Z)) {
-    DBG("Branching to %#06x\n", addr);
     program_counter_ = addr;
   }
 }
 
 void Cpu6502::STA(AddressingMode mode) {
-  uint16_t addr = NextAddrVal(mode).addr;
+  AddrVal addrval = NextAddrVal(mode);
+  uint16_t addr = addrval.addr;
+  DBGPAD("STA %s", AddrValString(addrval, mode).c_str());
   memory_view_->Set(addr, a_);
-  DBG("%#06x <= A\n", addr);
 }
 
 void Cpu6502::BIT(AddressingMode mode) {
-  uint8_t val = NextAddrVal(mode).val;
+  AddrVal addrval = NextAddrVal(mode);
+  uint8_t val = addrval.val;
+  DBGPAD("BIT %s", AddrValString(addrval, mode).c_str());
   uint8_t res = val & a_;
-  DBG("BIT %#04x ( &A= %#04x )\n", val, res);
   SetFlag(Flag::Z, res == 0);
   SetFlag(Flag::V, Bit(6, val) == 1);
   SetFlag(Flag::N, Bit(7, val) == 1);
 }
 
 void Cpu6502::BVS(AddressingMode mode) {
-  uint16_t addr = NextAddrVal(mode).addr;
+  AddrVal addrval = NextAddrVal(mode);
+  uint16_t addr = addrval.addr;
+  DBGPAD("BVS %s", AddrValString(addrval, mode).c_str());
   if (GetFlag(Flag::V)) {
-    DBG("Branching to %#06x\n", addr);
     program_counter_ = addr;
   }
 }
 
 void Cpu6502::BVC(AddressingMode mode) {
-  uint16_t addr = NextAddrVal(mode).addr;
+  AddrVal addrval = NextAddrVal(mode);
+  uint16_t addr = addrval.addr;
+  DBGPAD("BVC %s", AddrValString(addrval, mode).c_str());
   if (!GetFlag(Flag::V)) {
-    DBG("Branching to %#06x\n", addr);
     program_counter_ = addr;
   }
 }
 
 void Cpu6502::BPL(AddressingMode mode) {
-  uint16_t addr = NextAddrVal(mode).addr;
+  AddrVal addrval = NextAddrVal(mode);
+  uint16_t addr = addrval.addr;
+  DBGPAD("BPL %s", AddrValString(addrval, mode).c_str());
   if (!GetFlag(Flag::N)) {
-    DBG("Branching to %#06x\n", addr);
     program_counter_ = addr;
   }
 }
 
 void Cpu6502::RTS(AddressingMode mode) {
   program_counter_ = PopStack16();
-  DBG("RTS to %#06x\n", program_counter_);
+  DBGPADSINGLE("RTS");
 }
 
-void Cpu6502::NOP(AddressingMode mode) { }
+void Cpu6502::NOP(AddressingMode mode) {
+  DBGPADSINGLE("NOP");
+ }
 
 uint16_t Cpu6502::NextAddr(AddressingMode mode) {
   switch (mode) {
@@ -472,7 +487,7 @@ std::string Cpu6502::AddrValString(AddrVal addrval, AddressingMode mode)  {
     case AddressingMode::kZeroPageY:
       throw std::runtime_error("Undefined addressing mode.");
     case AddressingMode::kAbsolute:
-      throw std::runtime_error("Undefined addressing mode.");
+      return string_format("$%04X", addrval.addr);
     case AddressingMode::kAbsoluteX:
       throw std::runtime_error("Undefined addressing mode.");
     case AddressingMode::kAbsoluteY:
@@ -484,7 +499,7 @@ std::string Cpu6502::AddrValString(AddrVal addrval, AddressingMode mode)  {
     case AddressingMode::kAbsoluteIndirect:
       throw std::runtime_error("Undefined addressing mode.");
     case AddressingMode::kRelative:
-      throw std::runtime_error("Undefined addressing mode.");
+      return string_format("$%04X", addrval.addr);
     case AddressingMode::kNone:
       return "";
   }
