@@ -482,22 +482,36 @@ std::string Cpu6502::AddrValString(AddrVal addrval, AddressingMode mode)  {
       return string_format("#$%02X", addrval.val);
     case AddressingMode::kZeroPage:
       return string_format("$%02X = %02X", addrval.addr, addrval.val);
-    case AddressingMode::kZeroPageX:
-      throw std::runtime_error("Undefined addressing mode.");
-    case AddressingMode::kZeroPageY:
-      throw std::runtime_error("Undefined addressing mode.");
+    case AddressingMode::kZeroPageX: {
+      uint8_t target = memory_view_->Get(program_counter_ - 1);
+      return string_format("$%02X,X @ %02X = %02X", target, addrval.addr, addrval.val);
+    }
+    case AddressingMode::kZeroPageY: {
+      uint8_t target = memory_view_->Get(program_counter_ - 1);
+      return string_format("$%02X,Y @ %02X = %02X", target, addrval.addr, addrval.val);
+    }
     case AddressingMode::kAbsolute:
       return string_format("$%04X", addrval.addr);
-    case AddressingMode::kAbsoluteX:
-      throw std::runtime_error("Undefined addressing mode.");
-    case AddressingMode::kAbsoluteY:
-      throw std::runtime_error("Undefined addressing mode.");
-    case AddressingMode::kIndirectX:
-      throw std::runtime_error("Undefined addressing mode.");
-    case AddressingMode::kIndirectY:
-      throw std::runtime_error("Undefined addressing mode.");
-    case AddressingMode::kAbsoluteIndirect:
-      throw std::runtime_error("Undefined addressing mode.");
+    case AddressingMode::kAbsoluteX: {
+      uint16_t target = memory_view_->Get16(program_counter_ - 2);
+      return string_format("$%04X,X @ %04X = %02X", target, addrval.addr, addrval.val);
+    }
+    case AddressingMode::kAbsoluteY: {
+      uint16_t target = memory_view_->Get16(program_counter_ - 2);
+      return string_format("$%04X,Y @ %04X = %02X", target, addrval.addr, addrval.val);
+    }
+    case AddressingMode::kIndirectX: {
+      uint8_t target = memory_view_->Get(program_counter_ - 1);
+      return string_format("($%02X,X) @ %02X = %04X = %02X", target, target + x_, addrval.addr, addrval.val);
+    }
+    case AddressingMode::kIndirectY: {
+      uint8_t target = memory_view_->Get(program_counter_ - 1);
+      return string_format("($%02X),Y @ %02X = %04X = %02X", target, addrval.addr - y_, addrval.addr, addrval.val);
+    }
+    case AddressingMode::kAbsoluteIndirect: {
+      uint16_t target = memory_view_->Get16(program_counter_ - 2);
+      return string_format("($%04X) = %04X", target, addrval.addr);
+    }
     case AddressingMode::kRelative:
       return string_format("$%04X", addrval.addr);
     case AddressingMode::kNone:
