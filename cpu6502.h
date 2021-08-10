@@ -133,6 +133,8 @@ class Cpu6502 {
     uint8_t p_;
     uint8_t stack_pointer_;
 
+    // Current cycle number. Cycle 7 means 7 cycles have elapsed.
+    uint64_t cycle_ = 0;
 };
 
 // notes:

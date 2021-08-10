@@ -45,15 +45,16 @@ Cpu6502::Cpu6502(const std::string& file_path) {
   VDBG("NES ready. PC: %#04x\n", program_counter_);
 }
 
+// TODO: Rename to RunInstruction?
 void Cpu6502::RunCycle() {
-  // TODO: Update how SP is printed
   std::string prev_flags = string_format("A:%02X X:%02X Y:%02X P:%02X SP:%02X",
     a_, x_, y_, p_, stack_pointer_);
+  uint64_t prev_cycle = cycle_;
   uint8_t opcode = memory_view_->Get(program_counter_);
   DBG("%04X  %02X ", program_counter_, opcode);
   program_counter_++;
   instructions_.at(opcode).impl();
-  DBG("%s PPU:  0,  0 CYC: 0\n", prev_flags.c_str()); // nestest wants flags prior to instr, cycles after (maybe).
+  DBG("%s PPU:  0,  0 CYC:%d\n", prev_flags.c_str(), prev_cycle);
 }
 
 void Cpu6502::Reset(const std::string& file_path) {
@@ -63,6 +64,16 @@ void Cpu6502::Reset(const std::string& file_path) {
   assert(mapper_);
   assert(memory_view_);
   // DbgMem();
+
+  // http://webcache.googleusercontent.com/search?q=cache:knntPlSpFnQJ:forums.nesdev.com/viewtopic.php%3Ff%3D3%26t%3D14231+&cd=4&hl=en&ct=clnk&gl=us
+  // The following 7 cycles happens at reset:
+  // 1. [READ] read (PC)
+  // 2. [READ] read (PC)
+  // 3. [READ] read (S), decrement S
+  // 4. [READ] read (S), decrement S
+  // 5. [READ] read (S), decrement S
+  // 6. [WRITE] PC_low = ($FFFC), set interrupt flag
+  // 7. [WRITE] PC_high = ($FFFD)
 
   // nestest should start at 0xC000 till I get input working
   // C000 is start of PRG_ROM's mirror (so 0x10 in .nes)
@@ -74,8 +85,10 @@ void Cpu6502::Reset(const std::string& file_path) {
 
   // not realistic -- programs should set these
   a_ = x_ = y_ = 0;
+
   p_ = 0x24;  // for nestest golden
-  stack_pointer_ = 0xFF;
+  stack_pointer_ = 0xFD;
+  cycle_ = 7;
 
   BuildInstructionSet();
 }
@@ -159,7 +172,6 @@ void Cpu6502::SetFlag(Cpu6502::Flag flag, bool val) {
   }
 
 }
-// C000  4C F5 C5  JMP $C5F5                       A:00 X:00 Y:00 P:24 SP:FD PPU:  0, 21 CYC:7
 uint8_t Cpu6502::NextImmediate() {
   uint8_t val = memory_view_->Get(program_counter_++);
   DBG("%02X     ", val);
@@ -184,7 +196,6 @@ uint16_t Cpu6502::NextZeroPageY() {
 }
 uint16_t Cpu6502::NextAbsolute() {
   uint16_t addr = memory_view_->Get16(program_counter_);
-  // return static_cast<uint16_t>(Get(addr + 1)) << 8 | Get(addr);
   DBG("%02X %02X  ", static_cast<uint8_t>(addr), static_cast<uint8_t>(addr >> 8)); // low first
   program_counter_ += 2;
   return addr;
