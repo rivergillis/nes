@@ -90,6 +90,8 @@ void Cpu6502::Reset(const std::string& file_path) {
   stack_pointer_ = 0xFD;
   cycle_ = 7;
 
+  // TODO: Do the rest: https://wiki.nesdev.com/w/index.php?title=Init_code
+
   BuildInstructionSet();
 }
 

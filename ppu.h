@@ -3,6 +3,9 @@
 
 #include "common.h"
 
+// https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
+// https://www.reddit.com/r/EmuDev/comments/7k08b9/not_sure_where_to_start_with_the_nes_ppu/
+
 class Ppu {
   public:
     // Copies chr into chr_  if not null.

@@ -37,3 +37,4 @@ roms
 nes
 
 test/out.log
+test/out-noppu.log
