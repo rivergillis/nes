@@ -363,6 +363,7 @@ void Cpu6502::BCS(AddressingMode mode) {
   DBGPAD("BCS %s", AddrValString(addrval, mode).c_str());
   if (GetFlag(Flag::C)) {
     program_counter_ = addr;
+    cycle_ += addrval.page_crossed + 1;
   }
 }
 
