@@ -36,6 +36,7 @@ class Cpu6502 {
     struct AddrVal {
       uint16_t addr = 0;  // unused for kImmediate
       uint8_t val = 0;    // value at addr
+      bool page_crossed = false;
     };
     /// Addressing modes -- affects program_counter
     // These all return addresses except NextImmediate()
@@ -44,13 +45,13 @@ class Cpu6502 {
     uint16_t NextZeroPageX();
     uint16_t NextZeroPageY();
     uint16_t NextAbsolute();
-    uint16_t NextAbsoluteX();
-    uint16_t NextAbsoluteY();
+    uint16_t NextAbsoluteX(bool* page_crossed);
+    uint16_t NextAbsoluteY(bool* page_crossed);
     uint16_t NextIndirectX();
-    uint16_t NextIndirectY();
+    uint16_t NextIndirectY(bool* page_crossed);
     uint16_t NextAbsoluteIndirect(); // only JMP
     // For branching, decodes next offset into an address.
-    uint16_t NextRelativeAddr();
+    uint16_t NextRelativeAddr(bool* page_crossed);
 
     enum class AddressingMode {
       kImmediate,
@@ -66,7 +67,7 @@ class Cpu6502 {
       kRelative,
       kNone // needed?
     };
-    uint16_t NextAddr(AddressingMode mode);
+    uint16_t NextAddr(AddressingMode mode, bool* page_crossed);
     AddrVal NextAddrVal(AddressingMode mode);
 
     void PushStack(uint8_t val);
@@ -108,6 +109,8 @@ class Cpu6502 {
     struct Instruction {
       std::string name = "";
       std::function<void(void)> impl = nullptr; // addressing mode was bound
+      // Base number of cycles. Impl can add more (ex. page crossing)
+      uint8_t cycles = 0;
     };
     std::unordered_map<uint8_t, Instruction> instructions_;
 

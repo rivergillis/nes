@@ -53,7 +53,9 @@ void Cpu6502::RunCycle() {
   uint8_t opcode = memory_view_->Get(program_counter_);
   DBG("%04X  %02X ", program_counter_, opcode);
   program_counter_++;
-  instructions_.at(opcode).impl();
+  Instruction& instr = instructions_.at(opcode);
+  instr.impl();
+  cycle_ += instr.cycles;
   DBG("%s PPU:  0,  0 CYC:%d\n", prev_flags.c_str(), prev_cycle);
 }
 
@@ -202,16 +204,18 @@ uint16_t Cpu6502::NextAbsolute() {
   program_counter_ += 2;
   return addr;
 }
-uint16_t Cpu6502::NextAbsoluteX() {
+uint16_t Cpu6502::NextAbsoluteX(bool* page_crossed) {
   uint16_t addr = memory_view_->Get16(program_counter_);
   DBG("%02X %02X  ", static_cast<uint8_t>(addr), static_cast<uint8_t>(addr >> 8));
   program_counter_ += 2;
+  *page_crossed = CrossedPage(addr, addr + x_);
   return addr + x_;
 }
-uint16_t Cpu6502::NextAbsoluteY() {
+uint16_t Cpu6502::NextAbsoluteY(bool* page_crossed) {
   uint16_t addr = memory_view_->Get16(program_counter_);
   DBG("%02X %02X  ", static_cast<uint8_t>(addr), static_cast<uint8_t>(addr >> 8));
   program_counter_ += 2;
+  *page_crossed = CrossedPage(addr, addr + y_);
   return addr + y_;
 }
 uint16_t Cpu6502::NextIndirectX() {
@@ -221,11 +225,12 @@ uint16_t Cpu6502::NextIndirectX() {
   zero_addr = (zero_addr + x_) % 0xFF;
   return memory_view_->Get16(zero_addr);
 }
-uint16_t Cpu6502::NextIndirectY() {
+uint16_t Cpu6502::NextIndirectY(bool* page_crossed) {
   // get ZP addr, then read full addr from it and add Y
   uint16_t zero_addr = memory_view_->Get(program_counter_++);
   DBG("%02X     ", static_cast<uint8_t>(zero_addr));
   uint16_t addr = memory_view_->Get16(zero_addr);
+  *page_crossed = CrossedPage(addr, addr + y_);
   return addr + y_;
 }
 uint16_t Cpu6502::NextAbsoluteIndirect() {
@@ -235,7 +240,7 @@ uint16_t Cpu6502::NextAbsoluteIndirect() {
   return memory_view_->Get16(indirect);
 }
 
-uint16_t Cpu6502::NextRelativeAddr() {
+uint16_t Cpu6502::NextRelativeAddr(bool* page_crossed) {
   uint8_t offset_uint = memory_view_->Get(program_counter_++);
   DBG("%02X     ", static_cast<uint8_t>(offset_uint));
   // https://stackoverflow.com/questions/14623266/why-cant-i-reinterpret-cast-uint-to-int
@@ -243,6 +248,7 @@ uint16_t Cpu6502::NextRelativeAddr() {
   std::memcpy(&tmp, &offset_uint, sizeof(tmp));
   const int8_t offset = tmp;
 
+  *page_crossed = CrossedPage(program_counter_, program_counter_ + offset);
   return program_counter_ + offset;
 }
 
@@ -289,6 +295,7 @@ std::string Cpu6502::Status() {
 
 void Cpu6502::ADC(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
+  cycle_ += addrval.page_crossed;
   uint8_t val = addrval.val;
   DBGPAD("ADC %s", AddrValString(addrval, mode).c_str());
   uint16_t new_a = a_ + val + GetFlag(Flag::C);
@@ -322,6 +329,7 @@ void Cpu6502::RTI(AddressingMode mode) {
 
 void Cpu6502::LDX(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
+  cycle_ += addrval.page_crossed;
   uint8_t val = addrval.val;
   DBGPAD("LDX %s", AddrValString(addrval, mode).c_str());
   SetFlag(Flag::Z, val == 0);
@@ -369,11 +377,13 @@ void Cpu6502::BCC(AddressingMode mode) {
   DBGPAD("BCC %s", AddrValString(addrval, mode).c_str());
   if (!GetFlag(Flag::C)) {
     program_counter_ = addr;
+    cycle_ += addrval.page_crossed + 1;
   }
 }
 
 void Cpu6502::LDA(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
+  cycle_ += addrval.page_crossed;
   uint8_t val = addrval.val;
   DBGPAD("LDA %s", AddrValString(addrval, mode).c_str());
   SetFlag(Flag::Z, val == 0);
@@ -387,6 +397,7 @@ void Cpu6502::BEQ(AddressingMode mode) {
   DBGPAD("BEQ %s", AddrValString(addrval, mode).c_str());
   if (GetFlag(Flag::Z)) {
     program_counter_ = addr;
+    cycle_ += addrval.page_crossed + 1;
   }
 }
 
@@ -396,6 +407,7 @@ void Cpu6502::BNE(AddressingMode mode) {
   DBGPAD("BNE %s", AddrValString(addrval, mode).c_str());
   if (!GetFlag(Flag::Z)) {
     program_counter_ = addr;
+    cycle_ += addrval.page_crossed + 1;
   }
 }
 
@@ -422,6 +434,7 @@ void Cpu6502::BVS(AddressingMode mode) {
   DBGPAD("BVS %s", AddrValString(addrval, mode).c_str());
   if (GetFlag(Flag::V)) {
     program_counter_ = addr;
+    cycle_ += addrval.page_crossed + 1;
   }
 }
 
@@ -431,6 +444,7 @@ void Cpu6502::BVC(AddressingMode mode) {
   DBGPAD("BVC %s", AddrValString(addrval, mode).c_str());
   if (!GetFlag(Flag::V)) {
     program_counter_ = addr;
+    cycle_ += addrval.page_crossed + 1;
   }
 }
 
@@ -440,6 +454,7 @@ void Cpu6502::BPL(AddressingMode mode) {
   DBGPAD("BPL %s", AddrValString(addrval, mode).c_str());
   if (!GetFlag(Flag::N)) {
     program_counter_ = addr;
+    cycle_ += addrval.page_crossed + 1;
   }
 }
 
@@ -452,7 +467,7 @@ void Cpu6502::NOP(AddressingMode mode) {
   DBGPADSINGLE("NOP");
  }
 
-uint16_t Cpu6502::NextAddr(AddressingMode mode) {
+uint16_t Cpu6502::NextAddr(AddressingMode mode, bool* page_crossed) {
   switch (mode) {
     case AddressingMode::kZeroPage:
       return NextZeroPage();
@@ -463,17 +478,17 @@ uint16_t Cpu6502::NextAddr(AddressingMode mode) {
     case AddressingMode::kAbsolute:
       return NextAbsolute();
     case AddressingMode::kAbsoluteX:
-      return NextAbsoluteX();
+      return NextAbsoluteX(page_crossed);
     case AddressingMode::kAbsoluteY:
-      return NextAbsoluteY();
+      return NextAbsoluteY(page_crossed);
     case AddressingMode::kIndirectX:
       return NextIndirectX();
     case AddressingMode::kIndirectY:
-      return NextIndirectY();
+      return NextIndirectY(page_crossed);
     case AddressingMode::kAbsoluteIndirect:
       return NextAbsoluteIndirect();
     case AddressingMode::kRelative:
-      return NextRelativeAddr();
+      return NextRelativeAddr(page_crossed);
     default:
       throw std::runtime_error("Undefined addressing mode in NextAddr.");
   }
@@ -483,8 +498,8 @@ Cpu6502::AddrVal Cpu6502::NextAddrVal(AddressingMode mode) {
   if (mode == AddressingMode::kImmediate) {
     return {0, NextImmediate()};
   }
-  AddrVal addrval = {};
-  addrval.addr = NextAddr(mode);
+  AddrVal addrval;
+  addrval.addr = NextAddr(mode, &addrval.page_crossed);
   addrval.val = VAL(addrval.addr);
   return addrval;
 }
@@ -534,56 +549,56 @@ std::string Cpu6502::AddrValString(AddrVal addrval, AddressingMode mode)  {
 }
 
 void Cpu6502::BuildInstructionSet() {
-  #define ADD_INSTR(op, name, mode) instructions_[op] = {#name, [this]() { name(mode); }};
-  ADD_INSTR(0x69, ADC, AddressingMode::kImmediate);
-  ADD_INSTR(0x65, ADC, AddressingMode::kZeroPage);
-  ADD_INSTR(0x75, ADC, AddressingMode::kZeroPageX);
-  ADD_INSTR(0x6D, ADC, AddressingMode::kAbsolute);
-  ADD_INSTR(0x7D, ADC, AddressingMode::kAbsoluteX);
-  ADD_INSTR(0x79, ADC, AddressingMode::kAbsoluteY);
-  ADD_INSTR(0x61, ADC, AddressingMode::kIndirectX);
-  ADD_INSTR(0x71, ADC, AddressingMode::kIndirectY);
-  ADD_INSTR(0x4C, JMP, AddressingMode::kAbsolute);
-  ADD_INSTR(0x6C, JMP, AddressingMode::kAbsoluteIndirect);
-  ADD_INSTR(0x00, BRK, AddressingMode::kNone);
-  ADD_INSTR(0x40, BRK, AddressingMode::kNone);
-  ADD_INSTR(0xA2, LDX, AddressingMode::kImmediate);
-  ADD_INSTR(0xA6, LDX, AddressingMode::kZeroPage);
-  ADD_INSTR(0xB6, LDX, AddressingMode::kZeroPageY);
-  ADD_INSTR(0xAE, LDX, AddressingMode::kAbsolute);
-  ADD_INSTR(0xBE, LDX, AddressingMode::kAbsoluteY);
-  ADD_INSTR(0x86, STX, AddressingMode::kZeroPage);
-  ADD_INSTR(0x96, STX, AddressingMode::kZeroPageY);
-  ADD_INSTR(0x8E, STX, AddressingMode::kAbsolute);
-  ADD_INSTR(0x20, JSR, AddressingMode::kAbsolute);
-  ADD_INSTR(0xEA, NOP, AddressingMode::kNone);
-  ADD_INSTR(0x38, SEC, AddressingMode::kNone);
-  ADD_INSTR(0xB0, BCS, AddressingMode::kRelative);
-  ADD_INSTR(0x18, CLC, AddressingMode::kNone);
-  ADD_INSTR(0x90, BCC, AddressingMode::kRelative);
-  ADD_INSTR(0xA9, LDA, AddressingMode::kImmediate);
-  ADD_INSTR(0xA5, LDA, AddressingMode::kZeroPage);
-  ADD_INSTR(0xB5, LDA, AddressingMode::kZeroPageX);
-  ADD_INSTR(0xAD, LDA, AddressingMode::kAbsolute);
-  ADD_INSTR(0xBD, LDA, AddressingMode::kAbsoluteX);
-  ADD_INSTR(0xB9, LDA, AddressingMode::kAbsoluteY);
-  ADD_INSTR(0xA1, LDA, AddressingMode::kIndirectX);
-  ADD_INSTR(0xB1, LDA, AddressingMode::kIndirectY);
-  ADD_INSTR(0xF0, BEQ, AddressingMode::kRelative);
-  ADD_INSTR(0xD0, BNE, AddressingMode::kRelative);
-  ADD_INSTR(0x85, STA, AddressingMode::kZeroPage);
-  ADD_INSTR(0x95, STA, AddressingMode::kZeroPageX);
-  ADD_INSTR(0x8D, STA, AddressingMode::kAbsolute);
-  ADD_INSTR(0x9D, STA, AddressingMode::kAbsoluteX);
-  ADD_INSTR(0x99, STA, AddressingMode::kAbsoluteY);
-  ADD_INSTR(0x81, STA, AddressingMode::kIndirectX);
-  ADD_INSTR(0x91, STA, AddressingMode::kIndirectY);
-  ADD_INSTR(0x24, BIT, AddressingMode::kZeroPage);
-  ADD_INSTR(0x2C, BIT, AddressingMode::kAbsolute);
-  ADD_INSTR(0x70, BVS, AddressingMode::kRelative);
-  ADD_INSTR(0x50, BVC, AddressingMode::kRelative);
-  ADD_INSTR(0x10, BPL, AddressingMode::kRelative);
-  ADD_INSTR(0x60, RTS, AddressingMode::kNone);
+  #define ADD_INSTR(op, name, mode, cycles) instructions_[op] = {#name, [this]() { name(mode); }, cycles};
+  ADD_INSTR(0x69, ADC, AddressingMode::kImmediate, 2);
+  ADD_INSTR(0x65, ADC, AddressingMode::kZeroPage, 3);
+  ADD_INSTR(0x75, ADC, AddressingMode::kZeroPageX, 4);
+  ADD_INSTR(0x6D, ADC, AddressingMode::kAbsolute, 4);
+  ADD_INSTR(0x7D, ADC, AddressingMode::kAbsoluteX, 4);
+  ADD_INSTR(0x79, ADC, AddressingMode::kAbsoluteY, 4);
+  ADD_INSTR(0x61, ADC, AddressingMode::kIndirectX, 6);
+  ADD_INSTR(0x71, ADC, AddressingMode::kIndirectY, 5);
+  ADD_INSTR(0x4C, JMP, AddressingMode::kAbsolute, 3);
+  ADD_INSTR(0x6C, JMP, AddressingMode::kAbsoluteIndirect, 5);
+  ADD_INSTR(0x00, BRK, AddressingMode::kNone, 7);
+  ADD_INSTR(0x40, RTI, AddressingMode::kNone, 6);
+  ADD_INSTR(0xA2, LDX, AddressingMode::kImmediate, 2);
+  ADD_INSTR(0xA6, LDX, AddressingMode::kZeroPage, 3);
+  ADD_INSTR(0xB6, LDX, AddressingMode::kZeroPageY, 4);
+  ADD_INSTR(0xAE, LDX, AddressingMode::kAbsolute, 4);
+  ADD_INSTR(0xBE, LDX, AddressingMode::kAbsoluteY, 4);
+  ADD_INSTR(0x86, STX, AddressingMode::kZeroPage, 3);
+  ADD_INSTR(0x96, STX, AddressingMode::kZeroPageY, 4);
+  ADD_INSTR(0x8E, STX, AddressingMode::kAbsolute, 4);
+  ADD_INSTR(0x20, JSR, AddressingMode::kAbsolute, 6);
+  ADD_INSTR(0xEA, NOP, AddressingMode::kNone, 2);
+  ADD_INSTR(0x38, SEC, AddressingMode::kNone, 2);
+  ADD_INSTR(0xB0, BCS, AddressingMode::kRelative, 2);
+  ADD_INSTR(0x18, CLC, AddressingMode::kNone, 2);
+  ADD_INSTR(0x90, BCC, AddressingMode::kRelative, 2);
+  ADD_INSTR(0xA9, LDA, AddressingMode::kImmediate, 2);
+  ADD_INSTR(0xA5, LDA, AddressingMode::kZeroPage, 3);
+  ADD_INSTR(0xB5, LDA, AddressingMode::kZeroPageX, 4);
+  ADD_INSTR(0xAD, LDA, AddressingMode::kAbsolute, 4);
+  ADD_INSTR(0xBD, LDA, AddressingMode::kAbsoluteX, 4);
+  ADD_INSTR(0xB9, LDA, AddressingMode::kAbsoluteY, 4);
+  ADD_INSTR(0xA1, LDA, AddressingMode::kIndirectX, 6);
+  ADD_INSTR(0xB1, LDA, AddressingMode::kIndirectY, 5);
+  ADD_INSTR(0xF0, BEQ, AddressingMode::kRelative, 2);
+  ADD_INSTR(0xD0, BNE, AddressingMode::kRelative, 2);
+  ADD_INSTR(0x85, STA, AddressingMode::kZeroPage, 3);
+  ADD_INSTR(0x95, STA, AddressingMode::kZeroPageX, 4);
+  ADD_INSTR(0x8D, STA, AddressingMode::kAbsolute, 4);
+  ADD_INSTR(0x9D, STA, AddressingMode::kAbsoluteX, 5);
+  ADD_INSTR(0x99, STA, AddressingMode::kAbsoluteY, 5);
+  ADD_INSTR(0x81, STA, AddressingMode::kIndirectX, 6);
+  ADD_INSTR(0x91, STA, AddressingMode::kIndirectY, 6);
+  ADD_INSTR(0x24, BIT, AddressingMode::kZeroPage, 3);
+  ADD_INSTR(0x2C, BIT, AddressingMode::kAbsolute, 4);
+  ADD_INSTR(0x70, BVS, AddressingMode::kRelative, 2);
+  ADD_INSTR(0x50, BVC, AddressingMode::kRelative, 2);
+  ADD_INSTR(0x10, BPL, AddressingMode::kRelative, 2);
+  ADD_INSTR(0x60, RTS, AddressingMode::kNone, 6);
 
   VDBG("Instruction set built.\n");
 }

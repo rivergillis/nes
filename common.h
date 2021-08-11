@@ -24,6 +24,11 @@ bool Pos(T byte) {
   return Bit(7, byte) == 0;
 }
 
+// Returns true if lhs and rhs do not share the same page (MSB)
+bool CrossedPage(uint16_t lhs, uint16_t rhs) {
+  return static_cast<uint8_t>(lhs >> 8) != static_cast<uint8_t>(rhs >> 8);
+}
+
 // https://stackoverflow.com/questions/2342162/stdstring-formatting-like-sprintf  for C++11
 template<typename ... Args>
 std::string string_format( const std::string& format, Args ... args )
