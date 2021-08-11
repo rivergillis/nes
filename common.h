@@ -25,7 +25,8 @@ bool Pos(T byte) {
 }
 
 // Returns true if lhs and rhs do not share the same page (MSB)
-bool CrossedPage(uint16_t lhs, uint16_t rhs) {
+// this needs to be inline otherwise linker errors sorry future me
+inline bool CrossedPage(uint16_t lhs, uint16_t rhs) {
   return static_cast<uint8_t>(lhs >> 8) != static_cast<uint8_t>(rhs >> 8);
 }
 
