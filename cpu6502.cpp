@@ -468,6 +468,28 @@ void Cpu6502::NOP(AddressingMode mode) {
   DBGPADSINGLE("NOP");
  }
 
+void Cpu6502::SEI(AddressingMode mode) {
+  SetFlag(Flag::I, true);
+  DBGPADSINGLE("SEI");
+ }
+
+ void Cpu6502::SED(AddressingMode mode) {
+  SetFlag(Flag::D, true);
+  DBGPADSINGLE("SED");
+ }
+
+ void Cpu6502::PHP(AddressingMode mode) {
+  PushStack(p_ | 0b0011'0000);  // B=0b11
+  DBGPADSINGLE("PHP");
+ }
+
+void Cpu6502::PLA(AddressingMode mode) {
+  DBGPADSINGLE("PLA");
+  a_ = PopStack();
+  SetFlag(Flag::Z, a_ == 0);
+  SetFlag(Flag::N, !Pos(a_));
+ }
+
 uint16_t Cpu6502::NextAddr(AddressingMode mode, bool* page_crossed) {
   switch (mode) {
     case AddressingMode::kZeroPage:
@@ -545,8 +567,9 @@ std::string Cpu6502::AddrValString(AddrVal addrval, AddressingMode mode)  {
       return string_format("$%04X", addrval.addr);
     case AddressingMode::kNone:
       return "";
+    default:
+      throw std::runtime_error("Unhandled AddrMode");
   }
-  // TODO: Handle the rest of the addr modes.
 }
 
 void Cpu6502::BuildInstructionSet() {
@@ -600,6 +623,10 @@ void Cpu6502::BuildInstructionSet() {
   ADD_INSTR(0x50, BVC, AddressingMode::kRelative, 2);
   ADD_INSTR(0x10, BPL, AddressingMode::kRelative, 2);
   ADD_INSTR(0x60, RTS, AddressingMode::kNone, 6);
+  ADD_INSTR(0x78, SEI, AddressingMode::kNone, 2);
+  ADD_INSTR(0xF8, SED, AddressingMode::kNone, 2);
+  ADD_INSTR(0x08, PHP, AddressingMode::kNone, 3);
+  ADD_INSTR(0x68, PLA, AddressingMode::kNone, 4);
 
   VDBG("Instruction set built.\n");
 }
