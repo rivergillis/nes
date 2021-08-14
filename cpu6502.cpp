@@ -490,6 +490,24 @@ void Cpu6502::PLA(AddressingMode mode) {
   SetFlag(Flag::N, !Pos(a_));
  }
 
+void Cpu6502::AND(AddressingMode mode) {
+  AddrVal addrval = NextAddrVal(mode);
+  cycle_ += addrval.page_crossed;
+  a_ &= addrval.val;
+  SetFlag(Flag::Z, a_ == 0);
+  SetFlag(Flag::N, !Pos(a_));
+  DBGPAD("AND %s", AddrValString(addrval, mode).c_str());
+}
+
+void Cpu6502::CMP(AddressingMode mode) {
+  AddrVal addrval = NextAddrVal(mode);
+  cycle_ += addrval.page_crossed;
+  SetFlag(Flag::C, a_ >= addrval.val);
+  SetFlag(Flag::Z, a_ == addrval.val);
+  SetFlag(Flag::N, !Pos(a_ - addrval.val));
+  DBGPAD("CMP %s", AddrValString(addrval, mode).c_str());
+}
+
 uint16_t Cpu6502::NextAddr(AddressingMode mode, bool* page_crossed) {
   switch (mode) {
     case AddressingMode::kZeroPage:
@@ -627,6 +645,22 @@ void Cpu6502::BuildInstructionSet() {
   ADD_INSTR(0xF8, SED, AddressingMode::kNone, 2);
   ADD_INSTR(0x08, PHP, AddressingMode::kNone, 3);
   ADD_INSTR(0x68, PLA, AddressingMode::kNone, 4);
+  ADD_INSTR(0x29, AND, AddressingMode::kImmediate, 2);
+  ADD_INSTR(0x25, AND, AddressingMode::kZeroPage, 3);
+  ADD_INSTR(0x35, AND, AddressingMode::kZeroPageX, 4);
+  ADD_INSTR(0x2D, AND, AddressingMode::kAbsolute, 4);
+  ADD_INSTR(0x3D, AND, AddressingMode::kAbsoluteX, 4);
+  ADD_INSTR(0x39, AND, AddressingMode::kAbsoluteY, 4);
+  ADD_INSTR(0x21, AND, AddressingMode::kIndirectX, 6);
+  ADD_INSTR(0x31, AND, AddressingMode::kIndirectY, 5);
+  ADD_INSTR(0xC9, CMP, AddressingMode::kImmediate, 2);
+  ADD_INSTR(0xC5, CMP, AddressingMode::kZeroPage, 3);
+  ADD_INSTR(0xD5, CMP, AddressingMode::kZeroPageX, 4);
+  ADD_INSTR(0xCD, CMP, AddressingMode::kAbsolute, 4);
+  ADD_INSTR(0xDD, CMP, AddressingMode::kAbsoluteX, 4);
+  ADD_INSTR(0xD9, CMP, AddressingMode::kAbsoluteY, 4);
+  ADD_INSTR(0xC1, CMP, AddressingMode::kIndirectX, 6);
+  ADD_INSTR(0xD1, CMP, AddressingMode::kIndirectY, 5);
 
   VDBG("Instruction set built.\n");
 }

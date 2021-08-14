@@ -108,6 +108,8 @@ class Cpu6502 {
     DEF_INSTR(SED);
     DEF_INSTR(PHP);
     DEF_INSTR(PLA);
+    DEF_INSTR(AND);
+    DEF_INSTR(CMP);
 
     // Instruction set keyed on opcode.
     struct Instruction {
