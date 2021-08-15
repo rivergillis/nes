@@ -121,6 +121,8 @@ class Cpu6502 {
     DEF_INSTR(CPX);
     DEF_INSTR(CPY);
     DEF_INSTR(SBC);
+    DEF_INSTR(INX);
+    DEF_INSTR(INY);
 
     // Instruction set keyed on opcode.
     struct Instruction {

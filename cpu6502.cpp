@@ -603,20 +603,35 @@ void Cpu6502::CPY(AddressingMode mode) {
 
 void Cpu6502::SBC(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
-  cycle_ += addrval.page_crossed;
   uint8_t val = addrval.val;
+  val = ~val;
   DBGPAD("SBC %s", AddrValString(addrval, mode).c_str());
-  int16_t new_a = static_cast<int16_t>(a_) - val - (1 - GetFlag(Flag::C));
-  // -128 is smallest signed 8-bit value but we need to clear on overflow here.
-  if (new_a < -128) {
-    SetFlag(Flag::C, false);
+  uint16_t new_a = a_ + val + GetFlag(Flag::C);
+  SetFlag(Flag::C, new_a > 0xFF);
+  if (Pos(a_) && !Pos(addrval.val) && !Pos(new_a)) {
+    SetFlag(Flag::V, true);
+  } else if (!Pos(a_) && Pos(addrval.val) && Pos(new_a)) {
+    SetFlag(Flag::V, true);
   } else {
-    SetFlag(Flag::C, true);
+    SetFlag(Flag::V, false);
   }
-  SetFlag(Flag::V, Pos(a_) && !Pos(val) && !Pos(new_a));  // pos - neg must be pos
-  a_ = static_cast<uint8_t>(new_a); // does this work?
+  a_ = new_a;
   SetFlag(Flag::Z, a_ == 0);
   SetFlag(Flag::N, !Pos(a_));
+}
+
+void Cpu6502::INX(AddressingMode mode) {
+  DBGPADSINGLE("INX");
+  x_ += 1;
+  SetFlag(Flag::Z, x_ == 0);
+  SetFlag(Flag::N, !Pos(x_));
+}
+
+void Cpu6502::INY(AddressingMode mode) {
+  DBGPADSINGLE("INY");
+  y_ += 1;
+  SetFlag(Flag::Z, y_ == 0);
+  SetFlag(Flag::N, !Pos(y_));
 }
 
 uint16_t Cpu6502::NextAddr(AddressingMode mode, bool* page_crossed) {
@@ -812,6 +827,8 @@ void Cpu6502::BuildInstructionSet() {
   ADD_INSTR(0xF9, SBC, AddressingMode::kAbsoluteY, 4);
   ADD_INSTR(0xE1, SBC, AddressingMode::kIndirectX, 6);
   ADD_INSTR(0xF1, SBC, AddressingMode::kIndirectY, 5);
+  ADD_INSTR(0xE8, INX, AddressingMode::kNone, 2);
+  ADD_INSTR(0xC8, INY, AddressingMode::kNone, 2);
 
   VDBG("Instruction set built.\n");
 }
