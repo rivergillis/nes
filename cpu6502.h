@@ -110,6 +110,9 @@ class Cpu6502 {
     DEF_INSTR(PLA);
     DEF_INSTR(AND);
     DEF_INSTR(CMP);
+    DEF_INSTR(CLD);
+    DEF_INSTR(PHA);
+    DEF_INSTR(PLP);
 
     // Instruction set keyed on opcode.
     struct Instruction {

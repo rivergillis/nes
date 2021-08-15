@@ -174,8 +174,8 @@ void Cpu6502::SetFlag(Cpu6502::Flag flag, bool val) {
   } else {
     p_ &= ~(1 << static_cast<uint8_t>(flag));
   }
-
 }
+
 uint8_t Cpu6502::NextImmediate() {
   uint8_t val = memory_view_->Get(program_counter_++);
   DBG("%02X     ", val);
@@ -508,6 +508,38 @@ void Cpu6502::CMP(AddressingMode mode) {
   DBGPAD("CMP %s", AddrValString(addrval, mode).c_str());
 }
 
+void Cpu6502::CLD(AddressingMode mode) {
+  SetFlag(Flag::D, false);
+  DBGPADSINGLE("CLD");
+}
+
+ void Cpu6502::PHA(AddressingMode mode) {
+  PushStack(a_);
+  DBGPADSINGLE("PHA");
+ }
+
+ void Cpu6502::PLP(AddressingMode mode) {
+  uint8_t old_p = p_;
+  p_ = PopStack();
+
+
+  // Need to preserve bits 4 and 5 from original p
+  // There's probably a better way to do this...
+  if (Bit(4, old_p)) {
+    p_ |= (1 << 4);
+  } else {
+    p_ &= ~(1 << 4);
+  }
+
+  if (Bit(5, old_p)) {
+    p_ |= (1 << 5);
+  } else {
+    p_ &= ~(1 << 5);
+  }
+
+  DBGPADSINGLE("PLP");
+ }
+
 uint16_t Cpu6502::NextAddr(AddressingMode mode, bool* page_crossed) {
   switch (mode) {
     case AddressingMode::kZeroPage:
@@ -661,6 +693,9 @@ void Cpu6502::BuildInstructionSet() {
   ADD_INSTR(0xD9, CMP, AddressingMode::kAbsoluteY, 4);
   ADD_INSTR(0xC1, CMP, AddressingMode::kIndirectX, 6);
   ADD_INSTR(0xD1, CMP, AddressingMode::kIndirectY, 5);
+  ADD_INSTR(0xD8, CLD, AddressingMode::kIndirectY, 2);
+  ADD_INSTR(0x48, PHA, AddressingMode::kIndirectY, 3);
+  ADD_INSTR(0x28, PLP, AddressingMode::kIndirectY, 4);
 
   VDBG("Instruction set built.\n");
 }
