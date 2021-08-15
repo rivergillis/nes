@@ -601,6 +601,24 @@ void Cpu6502::CPY(AddressingMode mode) {
   DBGPAD("CPY %s", AddrValString(addrval, mode).c_str());
 }
 
+void Cpu6502::SBC(AddressingMode mode) {
+  AddrVal addrval = NextAddrVal(mode);
+  cycle_ += addrval.page_crossed;
+  uint8_t val = addrval.val;
+  DBGPAD("SBC %s", AddrValString(addrval, mode).c_str());
+  int16_t new_a = static_cast<int16_t>(a_) - val - (1 - GetFlag(Flag::C));
+  // -128 is smallest signed 8-bit value but we need to clear on overflow here.
+  if (new_a < -128) {
+    SetFlag(Flag::C, false);
+  } else {
+    SetFlag(Flag::C, true);
+  }
+  SetFlag(Flag::V, Pos(a_) && !Pos(val) && !Pos(new_a));  // pos - neg must be pos
+  a_ = static_cast<uint8_t>(new_a); // does this work?
+  SetFlag(Flag::Z, a_ == 0);
+  SetFlag(Flag::N, !Pos(a_));
+}
+
 uint16_t Cpu6502::NextAddr(AddressingMode mode, bool* page_crossed) {
   switch (mode) {
     case AddressingMode::kZeroPage:
@@ -786,6 +804,14 @@ void Cpu6502::BuildInstructionSet() {
   ADD_INSTR(0xC0, CPY, AddressingMode::kImmediate, 2);
   ADD_INSTR(0xC4, CPY, AddressingMode::kZeroPage, 3);
   ADD_INSTR(0xCC, CPY, AddressingMode::kAbsolute, 4);
+  ADD_INSTR(0xE9, SBC, AddressingMode::kImmediate, 2);
+  ADD_INSTR(0xE5, SBC, AddressingMode::kZeroPage, 3);
+  ADD_INSTR(0xF5, SBC, AddressingMode::kZeroPageX, 4);
+  ADD_INSTR(0xED, SBC, AddressingMode::kAbsolute, 4);
+  ADD_INSTR(0xFD, SBC, AddressingMode::kAbsoluteX, 4);
+  ADD_INSTR(0xF9, SBC, AddressingMode::kAbsoluteY, 4);
+  ADD_INSTR(0xE1, SBC, AddressingMode::kIndirectX, 6);
+  ADD_INSTR(0xF1, SBC, AddressingMode::kIndirectY, 5);
 
   VDBG("Instruction set built.\n");
 }
