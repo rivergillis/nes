@@ -117,6 +117,9 @@ class Cpu6502 {
     DEF_INSTR(ORA);
     DEF_INSTR(CLV);
     DEF_INSTR(EOR);
+    DEF_INSTR(LDY);
+    DEF_INSTR(CPX);
+    DEF_INSTR(CPY);
 
     // Instruction set keyed on opcode.
     struct Instruction {

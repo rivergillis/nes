@@ -573,6 +573,34 @@ void Cpu6502::EOR(AddressingMode mode) {
   DBGPAD("EOR %s", AddrValString(addrval, mode).c_str());
 }
 
+void Cpu6502::LDY(AddressingMode mode) {
+  AddrVal addrval = NextAddrVal(mode);
+  cycle_ += addrval.page_crossed;
+  uint8_t val = addrval.val;
+  DBGPAD("LDY %s", AddrValString(addrval, mode).c_str());
+  SetFlag(Flag::Z, val == 0);
+  SetFlag(Flag::N, !Pos(val));
+  y_ = val;
+}
+
+void Cpu6502::CPX(AddressingMode mode) {
+  AddrVal addrval = NextAddrVal(mode);
+  cycle_ += addrval.page_crossed;
+  SetFlag(Flag::C, x_ >= addrval.val);
+  SetFlag(Flag::Z, x_ == addrval.val);
+  SetFlag(Flag::N, !Pos(x_ - addrval.val));
+  DBGPAD("CPX %s", AddrValString(addrval, mode).c_str());
+}
+
+void Cpu6502::CPY(AddressingMode mode) {
+  AddrVal addrval = NextAddrVal(mode);
+  cycle_ += addrval.page_crossed;
+  SetFlag(Flag::C, y_ >= addrval.val);
+  SetFlag(Flag::Z, y_ == addrval.val);
+  SetFlag(Flag::N, !Pos(y_ - addrval.val));
+  DBGPAD("CPY %s", AddrValString(addrval, mode).c_str());
+}
+
 uint16_t Cpu6502::NextAddr(AddressingMode mode, bool* page_crossed) {
   switch (mode) {
     case AddressingMode::kZeroPage:
@@ -747,6 +775,17 @@ void Cpu6502::BuildInstructionSet() {
   ADD_INSTR(0x59, EOR, AddressingMode::kAbsoluteY, 4);
   ADD_INSTR(0x41, EOR, AddressingMode::kIndirectX, 6);
   ADD_INSTR(0x51, EOR, AddressingMode::kIndirectY, 5);
+  ADD_INSTR(0xA0, LDY, AddressingMode::kImmediate, 2);
+  ADD_INSTR(0xA4, LDY, AddressingMode::kZeroPage, 3);
+  ADD_INSTR(0xB4, LDY, AddressingMode::kZeroPageX, 4);
+  ADD_INSTR(0xAC, LDY, AddressingMode::kAbsolute, 4);
+  ADD_INSTR(0xBC, LDY, AddressingMode::kAbsoluteX, 4);
+  ADD_INSTR(0xE0, CPX, AddressingMode::kImmediate, 2);
+  ADD_INSTR(0xE4, CPX, AddressingMode::kZeroPage, 3);
+  ADD_INSTR(0xEC, CPX, AddressingMode::kAbsolute, 4);
+  ADD_INSTR(0xC0, CPY, AddressingMode::kImmediate, 2);
+  ADD_INSTR(0xC4, CPY, AddressingMode::kZeroPage, 3);
+  ADD_INSTR(0xCC, CPY, AddressingMode::kAbsolute, 4);
 
   VDBG("Instruction set built.\n");
 }
