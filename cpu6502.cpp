@@ -301,9 +301,9 @@ void Cpu6502::ADC(AddressingMode mode) {
   uint16_t new_a = a_ + val + GetFlag(Flag::C);
   SetFlag(Flag::C, new_a > 0xFF);
   SetFlag(Flag::V, Pos(a_) && Pos(val) && !Pos(new_a));
-  SetFlag(Flag::Z, new_a == 0);
-  SetFlag(Flag::N, !Pos(new_a));
   a_ = new_a;
+  SetFlag(Flag::Z, a_ == 0);
+  SetFlag(Flag::N, !Pos(a_));
 }
 
 void Cpu6502::JMP(AddressingMode mode) {
