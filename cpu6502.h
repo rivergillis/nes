@@ -113,6 +113,10 @@ class Cpu6502 {
     DEF_INSTR(CLD);
     DEF_INSTR(PHA);
     DEF_INSTR(PLP);
+    DEF_INSTR(BMI);
+    DEF_INSTR(ORA);
+    DEF_INSTR(CLV);
+    DEF_INSTR(EOR);
 
     // Instruction set keyed on opcode.
     struct Instruction {

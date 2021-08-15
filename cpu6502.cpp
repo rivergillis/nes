@@ -513,12 +513,12 @@ void Cpu6502::CLD(AddressingMode mode) {
   DBGPADSINGLE("CLD");
 }
 
- void Cpu6502::PHA(AddressingMode mode) {
+void Cpu6502::PHA(AddressingMode mode) {
   PushStack(a_);
   DBGPADSINGLE("PHA");
- }
+}
 
- void Cpu6502::PLP(AddressingMode mode) {
+void Cpu6502::PLP(AddressingMode mode) {
   uint8_t old_p = p_;
   p_ = PopStack();
 
@@ -538,7 +538,40 @@ void Cpu6502::CLD(AddressingMode mode) {
   }
 
   DBGPADSINGLE("PLP");
- }
+}
+
+void Cpu6502::BMI(AddressingMode mode) {
+  AddrVal addrval = NextAddrVal(mode);
+  uint16_t addr = addrval.addr;
+  DBGPAD("BMI %s", AddrValString(addrval, mode).c_str());
+  if (GetFlag(Flag::N)) {
+    program_counter_ = addr;
+    cycle_ += addrval.page_crossed + 1;
+  }
+}
+
+void Cpu6502::ORA(AddressingMode mode) {
+  AddrVal addrval = NextAddrVal(mode);
+  cycle_ += addrval.page_crossed;
+  a_ |= addrval.val;
+  SetFlag(Flag::Z, a_ == 0);
+  SetFlag(Flag::N, !Pos(a_));
+  DBGPAD("ORA %s", AddrValString(addrval, mode).c_str());
+}
+
+void Cpu6502::CLV(AddressingMode mode) {
+  SetFlag(Flag::V, false);
+  DBGPADSINGLE("CLV");
+}
+
+void Cpu6502::EOR(AddressingMode mode) {
+  AddrVal addrval = NextAddrVal(mode);
+  cycle_ += addrval.page_crossed;
+  a_ ^= addrval.val;
+  SetFlag(Flag::Z, a_ == 0);
+  SetFlag(Flag::N, !Pos(a_));
+  DBGPAD("EOR %s", AddrValString(addrval, mode).c_str());
+}
 
 uint16_t Cpu6502::NextAddr(AddressingMode mode, bool* page_crossed) {
   switch (mode) {
@@ -693,9 +726,27 @@ void Cpu6502::BuildInstructionSet() {
   ADD_INSTR(0xD9, CMP, AddressingMode::kAbsoluteY, 4);
   ADD_INSTR(0xC1, CMP, AddressingMode::kIndirectX, 6);
   ADD_INSTR(0xD1, CMP, AddressingMode::kIndirectY, 5);
-  ADD_INSTR(0xD8, CLD, AddressingMode::kIndirectY, 2);
-  ADD_INSTR(0x48, PHA, AddressingMode::kIndirectY, 3);
-  ADD_INSTR(0x28, PLP, AddressingMode::kIndirectY, 4);
+  ADD_INSTR(0xD8, CLD, AddressingMode::kNone, 2);
+  ADD_INSTR(0x48, PHA, AddressingMode::kNone, 3);
+  ADD_INSTR(0x28, PLP, AddressingMode::kNone, 4);
+  ADD_INSTR(0x30, BMI, AddressingMode::kRelative, 2);
+  ADD_INSTR(0x09, ORA, AddressingMode::kImmediate, 2);
+  ADD_INSTR(0x05, ORA, AddressingMode::kZeroPage, 3);
+  ADD_INSTR(0x15, ORA, AddressingMode::kZeroPageX, 4);
+  ADD_INSTR(0x0D, ORA, AddressingMode::kAbsolute, 4);
+  ADD_INSTR(0x1D, ORA, AddressingMode::kAbsoluteX, 4);
+  ADD_INSTR(0x19, ORA, AddressingMode::kAbsoluteY, 4);
+  ADD_INSTR(0x01, ORA, AddressingMode::kIndirectX, 6);
+  ADD_INSTR(0x11, ORA, AddressingMode::kIndirectY, 5);
+  ADD_INSTR(0xB8, CLV, AddressingMode::kNone, 2);
+  ADD_INSTR(0x49, EOR, AddressingMode::kImmediate, 2);
+  ADD_INSTR(0x45, EOR, AddressingMode::kZeroPage, 3);
+  ADD_INSTR(0x55, EOR, AddressingMode::kZeroPageX, 4);
+  ADD_INSTR(0x4D, EOR, AddressingMode::kAbsolute, 4);
+  ADD_INSTR(0x5D, EOR, AddressingMode::kAbsoluteX, 4);
+  ADD_INSTR(0x59, EOR, AddressingMode::kAbsoluteY, 4);
+  ADD_INSTR(0x41, EOR, AddressingMode::kIndirectX, 6);
+  ADD_INSTR(0x51, EOR, AddressingMode::kIndirectY, 5);
 
   VDBG("Instruction set built.\n");
 }
