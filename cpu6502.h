@@ -125,6 +125,10 @@ class Cpu6502 {
     DEF_INSTR(INY);
     DEF_INSTR(DEX);
     DEF_INSTR(DEY);
+    DEF_INSTR(TAX);
+    DEF_INSTR(TAY);
+    DEF_INSTR(TXA);
+    DEF_INSTR(TYA);
 
     // Instruction set keyed on opcode.
     struct Instruction {

@@ -648,6 +648,34 @@ void Cpu6502::DEY(AddressingMode mode) {
   SetFlag(Flag::N, !Pos(y_));
 }
 
+void Cpu6502::TAX(AddressingMode mode) {
+  DBGPADSINGLE("TAX");
+  x_ = a_;
+  SetFlag(Flag::Z, x_ == 0);
+  SetFlag(Flag::N, !Pos(x_));
+}
+
+void Cpu6502::TAY(AddressingMode mode) {
+  DBGPADSINGLE("TAY");
+  y_ = a_;
+  SetFlag(Flag::Z, y_ == 0);
+  SetFlag(Flag::N, !Pos(y_));
+}
+
+void Cpu6502::TXA(AddressingMode mode) {
+  DBGPADSINGLE("TXA");
+  a_ = x_;
+  SetFlag(Flag::Z, a_ == 0);
+  SetFlag(Flag::N, !Pos(a_));
+}
+
+void Cpu6502::TYA(AddressingMode mode) {
+  DBGPADSINGLE("TYA");
+  a_ = y_;
+  SetFlag(Flag::Z, a_ == 0);
+  SetFlag(Flag::N, !Pos(a_));
+}
+
 uint16_t Cpu6502::NextAddr(AddressingMode mode, bool* page_crossed) {
   switch (mode) {
     case AddressingMode::kZeroPage:
@@ -845,6 +873,10 @@ void Cpu6502::BuildInstructionSet() {
   ADD_INSTR(0xC8, INY, AddressingMode::kNone, 2);
   ADD_INSTR(0xCA, DEX, AddressingMode::kNone, 2);
   ADD_INSTR(0x88, DEY, AddressingMode::kNone, 2);
+  ADD_INSTR(0xAA, TAX, AddressingMode::kNone, 2);
+  ADD_INSTR(0xA8, TAY, AddressingMode::kNone, 2);
+  ADD_INSTR(0x8A, TAX, AddressingMode::kNone, 2);
+  ADD_INSTR(0x98, TAY, AddressingMode::kNone, 2);
 
   VDBG("Instruction set built.\n");
 }
