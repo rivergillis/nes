@@ -634,6 +634,20 @@ void Cpu6502::INY(AddressingMode mode) {
   SetFlag(Flag::N, !Pos(y_));
 }
 
+void Cpu6502::DEX(AddressingMode mode) {
+  DBGPADSINGLE("DEX");
+  x_ -= 1;
+  SetFlag(Flag::Z, x_ == 0);
+  SetFlag(Flag::N, !Pos(x_));
+}
+
+void Cpu6502::DEY(AddressingMode mode) {
+  DBGPADSINGLE("DEY");
+  y_ -= 1;
+  SetFlag(Flag::Z, y_ == 0);
+  SetFlag(Flag::N, !Pos(y_));
+}
+
 uint16_t Cpu6502::NextAddr(AddressingMode mode, bool* page_crossed) {
   switch (mode) {
     case AddressingMode::kZeroPage:
@@ -829,6 +843,8 @@ void Cpu6502::BuildInstructionSet() {
   ADD_INSTR(0xF1, SBC, AddressingMode::kIndirectY, 5);
   ADD_INSTR(0xE8, INX, AddressingMode::kNone, 2);
   ADD_INSTR(0xC8, INY, AddressingMode::kNone, 2);
+  ADD_INSTR(0xCA, DEX, AddressingMode::kNone, 2);
+  ADD_INSTR(0x88, DEY, AddressingMode::kNone, 2);
 
   VDBG("Instruction set built.\n");
 }
