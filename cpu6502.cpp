@@ -309,7 +309,7 @@ void Cpu6502::ADC(AddressingMode mode) {
 void Cpu6502::JMP(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   uint16_t addr = addrval.addr;
-  DBGPAD("JMP %s", AddrValString(addrval, mode).c_str());
+  DBGPAD("JMP %s", AddrValString(addrval, mode, /*is_jmp=*/true).c_str());
   program_counter_ = addr;
 }
 
@@ -727,7 +727,7 @@ Cpu6502::AddrVal Cpu6502::NextAddrVal(AddressingMode mode) {
   return addrval;
 }
 
-std::string Cpu6502::AddrValString(AddrVal addrval, AddressingMode mode)  {
+std::string Cpu6502::AddrValString(AddrVal addrval, AddressingMode mode, bool is_jmp)  {
   switch (mode) {
     case AddressingMode::kImmediate:
       return string_format("#$%02X", addrval.val);
@@ -742,7 +742,12 @@ std::string Cpu6502::AddrValString(AddrVal addrval, AddressingMode mode)  {
       return string_format("$%02X,Y @ %02X = %02X", target, addrval.addr, addrval.val);
     }
     case AddressingMode::kAbsolute:
-      return string_format("$%04X", addrval.addr);
+      // For some reason nestest doesn't want jmp to log the value
+      if (is_jmp) {
+        return string_format("$%04X", addrval.addr);
+      } else {
+        return string_format("$%04X = %02X", addrval.addr, addrval.val);
+      }
     case AddressingMode::kAbsoluteX: {
       uint16_t target = memory_view_->Get16(program_counter_ - 2);
       return string_format("$%04X,X @ %04X = %02X", target, addrval.addr, addrval.val);

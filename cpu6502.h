@@ -75,7 +75,7 @@ class Cpu6502 {
     uint8_t PopStack();
     uint16_t PopStack16();
 
-    std::string AddrValString(AddrVal addrval, AddressingMode mode);
+    std::string AddrValString(AddrVal addrval, AddressingMode mode, bool is_jmp=false);
     void DbgMem();
     void DbgStack();
     std::string Status();
@@ -129,7 +129,6 @@ class Cpu6502 {
     DEF_INSTR(TAY);
     DEF_INSTR(TXA);
     DEF_INSTR(TYA);
-
     DEF_INSTR(TSX);
     DEF_INSTR(TXS);
 
@@ -145,8 +144,8 @@ class Cpu6502 {
     // Points to next address to execute
     uint16_t program_counter_ = 0;
 
-    // 2kb of internal memory
-    uint8_t internal_ram_[2048];
+    // 2kb of internal memory -- nestest wants this 0'd
+    uint8_t internal_ram_[2048] = {};
 
     std::unique_ptr<Ppu> ppu_;
 
