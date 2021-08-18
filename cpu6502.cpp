@@ -347,7 +347,7 @@ void Cpu6502::STX(AddressingMode mode) {
 void Cpu6502::JSR(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   uint16_t new_pc = addrval.addr;
-  DBGPAD("JSR %s", AddrValString(addrval, mode).c_str());
+  DBGPAD("JSR %s", AddrValString(addrval, mode, /*is_jmp=*/true).c_str());
   PushStack16(program_counter_);
   program_counter_ = new_pc;
 }
@@ -483,6 +483,23 @@ void Cpu6502::SEI(AddressingMode mode) {
   DBGPADSINGLE("PHP");
  }
 
+
+// CPU[160]: 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 
+// CPU[170]: 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0xce 
+// CPU[180]: 0x3a 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 
+// CPU[190]: 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 
+// CPU[1A0]: 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 
+// CPU[1B0]: 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 
+// CPU[1C0]: 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 
+// CPU[1D0]: 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 
+// CPU[1E0]: 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 
+// CPU[1F0]: 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0xcb 0xdd 0xc6 0x0c 0000 0000 
+
+// CE42  68        PLA                             A:69 X:7E Y:01 P:27 SP:7E CYC:2029
+// CE43  68        PLA                             A:CE X:7E Y:01 P:A5 SP:7F CYC:2033
+// need:
+// CE42  68        PLA                             A:69 X:7E Y:01 P:27 SP:7E CYC:2029
+// CE43  68        PLA                             A:39 X:7E Y:01 P:25 SP:7F CYC:2033
 void Cpu6502::PLA(AddressingMode mode) {
   DBGPADSINGLE("PLA");
   a_ = PopStack();
@@ -684,10 +701,9 @@ void Cpu6502::TSX(AddressingMode mode) {
 }
 
 void Cpu6502::TXS(AddressingMode mode) {
+  // Weirdly enough this doesn't set flags.
   DBGPADSINGLE("TXS");
   stack_pointer_ = x_;
-  SetFlag(Flag::Z, stack_pointer_ == 0);
-  SetFlag(Flag::N, !Pos(stack_pointer_));
 }
 
 uint16_t Cpu6502::NextAddr(AddressingMode mode, bool* page_crossed) {
