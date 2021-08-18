@@ -130,6 +130,9 @@ class Cpu6502 {
     DEF_INSTR(TXA);
     DEF_INSTR(TYA);
 
+    DEF_INSTR(TSX);
+    DEF_INSTR(TXS);
+
     // Instruction set keyed on opcode.
     struct Instruction {
       std::string name = "";

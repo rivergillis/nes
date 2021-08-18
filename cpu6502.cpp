@@ -676,6 +676,20 @@ void Cpu6502::TYA(AddressingMode mode) {
   SetFlag(Flag::N, !Pos(a_));
 }
 
+void Cpu6502::TSX(AddressingMode mode) {
+  DBGPADSINGLE("TSX");
+  x_ = stack_pointer_;
+  SetFlag(Flag::Z, x_ == 0);
+  SetFlag(Flag::N, !Pos(x_));
+}
+
+void Cpu6502::TXS(AddressingMode mode) {
+  DBGPADSINGLE("TXS");
+  stack_pointer_ = x_;
+  SetFlag(Flag::Z, stack_pointer_ == 0);
+  SetFlag(Flag::N, !Pos(stack_pointer_));
+}
+
 uint16_t Cpu6502::NextAddr(AddressingMode mode, bool* page_crossed) {
   switch (mode) {
     case AddressingMode::kZeroPage:
@@ -875,8 +889,10 @@ void Cpu6502::BuildInstructionSet() {
   ADD_INSTR(0x88, DEY, AddressingMode::kNone, 2);
   ADD_INSTR(0xAA, TAX, AddressingMode::kNone, 2);
   ADD_INSTR(0xA8, TAY, AddressingMode::kNone, 2);
-  ADD_INSTR(0x8A, TAX, AddressingMode::kNone, 2);
-  ADD_INSTR(0x98, TAY, AddressingMode::kNone, 2);
+  ADD_INSTR(0x8A, TXA, AddressingMode::kNone, 2);
+  ADD_INSTR(0x98, TYA, AddressingMode::kNone, 2);
+  ADD_INSTR(0x9A, TXS, AddressingMode::kNone, 2);
+  ADD_INSTR(0xBA, TSX, AddressingMode::kNone, 2);
 
   VDBG("Instruction set built.\n");
 }
