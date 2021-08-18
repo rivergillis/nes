@@ -256,16 +256,16 @@ void Cpu6502::PushStack(uint8_t val) {
   memory_view_->Set(StackAddr(stack_pointer_--), val);
 }
 void Cpu6502::PushStack16(uint16_t val) {
-  // Store LSB then MSB
-  PushStack(static_cast<uint8_t>(val));
+  // Store MSB then LSB so that we can read back little-endian.
   PushStack(val >> 8);
+  PushStack(static_cast<uint8_t>(val));
 }
 uint8_t Cpu6502::PopStack() {
   return memory_view_->Get(StackAddr(++stack_pointer_));
 }
 uint16_t Cpu6502::PopStack16() {
-  // Value was stored little-endian in top-down stack, so get MSB then LSB
-  return (PopStack() << 8) | PopStack();
+  // Value was stored little-endian in top-down stack, so get LSB then MSB
+  return (PopStack() | (PopStack() << 8));
 }
 
 void Cpu6502::DbgMem() {
@@ -345,10 +345,11 @@ void Cpu6502::STX(AddressingMode mode) {
 }
 
 void Cpu6502::JSR(AddressingMode mode) {
+  uint16_t pc_to_return_to = program_counter_ + 1;
   AddrVal addrval = NextAddrVal(mode);
   uint16_t new_pc = addrval.addr;
   DBGPAD("JSR %s", AddrValString(addrval, mode, /*is_jmp=*/true).c_str());
-  PushStack16(program_counter_);
+  PushStack16(pc_to_return_to);
   program_counter_ = new_pc;
 }
 
@@ -460,7 +461,7 @@ void Cpu6502::BPL(AddressingMode mode) {
 }
 
 void Cpu6502::RTS(AddressingMode mode) {
-  program_counter_ = PopStack16();
+  program_counter_ = PopStack16() + 1;
   DBGPADSINGLE("RTS");
 }
 
@@ -483,23 +484,6 @@ void Cpu6502::SEI(AddressingMode mode) {
   DBGPADSINGLE("PHP");
  }
 
-
-// CPU[160]: 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 
-// CPU[170]: 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0xce 
-// CPU[180]: 0x3a 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 
-// CPU[190]: 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 
-// CPU[1A0]: 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 
-// CPU[1B0]: 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 
-// CPU[1C0]: 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 
-// CPU[1D0]: 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 
-// CPU[1E0]: 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 
-// CPU[1F0]: 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0xcb 0xdd 0xc6 0x0c 0000 0000 
-
-// CE42  68        PLA                             A:69 X:7E Y:01 P:27 SP:7E CYC:2029
-// CE43  68        PLA                             A:CE X:7E Y:01 P:A5 SP:7F CYC:2033
-// need:
-// CE42  68        PLA                             A:69 X:7E Y:01 P:27 SP:7E CYC:2029
-// CE43  68        PLA                             A:39 X:7E Y:01 P:25 SP:7F CYC:2033
 void Cpu6502::PLA(AddressingMode mode) {
   DBGPADSINGLE("PLA");
   a_ = PopStack();
