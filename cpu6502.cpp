@@ -692,6 +692,26 @@ void Cpu6502::TXS(AddressingMode mode) {
   stack_pointer_ = x_;
 }
 
+void Cpu6502::LSR(AddressingMode mode) {
+  AddrVal addrval = NextAddrVal(mode);
+  DBGPAD("LSR %s", AddrValString(addrval, mode).c_str());
+  // Accumulator needs to be set directly
+  uint8_t result = 0;
+  uint8_t initial_val = 0;
+  if (mode == AddressingMode::kAccumulator) {
+    initial_val = a_;
+    result = initial_val >> 1;
+    a_ = result;
+  } else {
+    initial_val = addrval.val;
+    result = initial_val >> 1;
+    memory_view_->Set(addrval.addr, result);
+  }
+  SetFlag(Flag::C, Bit(0, initial_val));
+  SetFlag(Flag::Z, result == 0);
+  SetFlag(Flag::N, !Pos(result));
+}
+
 uint16_t Cpu6502::NextAddr(AddressingMode mode, bool* page_crossed) {
   switch (mode) {
     case AddressingMode::kZeroPage:
@@ -722,6 +742,9 @@ uint16_t Cpu6502::NextAddr(AddressingMode mode, bool* page_crossed) {
 Cpu6502::AddrVal Cpu6502::NextAddrVal(AddressingMode mode) {
   if (mode == AddressingMode::kImmediate) {
     return {0, NextImmediate()};
+  } else if (mode == AddressingMode::kAccumulator) {
+    DBG("       ");
+    return {0, a_};
   }
   AddrVal addrval;
   addrval.addr = NextAddr(mode, &addrval.page_crossed);
@@ -772,6 +795,8 @@ std::string Cpu6502::AddrValString(AddrVal addrval, AddressingMode mode, bool is
     }
     case AddressingMode::kRelative:
       return string_format("$%04X", addrval.addr);
+    case AddressingMode::kAccumulator:
+      return "A";
     case AddressingMode::kNone:
       return "";
     default:
@@ -900,6 +925,11 @@ void Cpu6502::BuildInstructionSet() {
   ADD_INSTR(0x98, TYA, AddressingMode::kNone, 2);
   ADD_INSTR(0x9A, TXS, AddressingMode::kNone, 2);
   ADD_INSTR(0xBA, TSX, AddressingMode::kNone, 2);
+  ADD_INSTR(0x4A, LSR, AddressingMode::kAccumulator, 2);
+  ADD_INSTR(0x46, LSR, AddressingMode::kZeroPage, 5);
+  ADD_INSTR(0x56, LSR, AddressingMode::kZeroPageX, 6);
+  ADD_INSTR(0x4E, LSR, AddressingMode::kAbsolute, 6);
+  ADD_INSTR(0x5E, LSR, AddressingMode::kAbsoluteX, 7);
 
   VDBG("Instruction set built.\n");
 }

@@ -66,6 +66,7 @@ class Cpu6502 {
       kIndirectY,
       kAbsoluteIndirect,
       kRelative,
+      kAccumulator,
       kNone // needed?
     };
     uint16_t NextAddr(AddressingMode mode, bool* page_crossed);
@@ -132,6 +133,7 @@ class Cpu6502 {
     DEF_INSTR(TYA);
     DEF_INSTR(TSX);
     DEF_INSTR(TXS);
+    DEF_INSTR(LSR);
 
     // Instruction set keyed on opcode.
     struct Instruction {
