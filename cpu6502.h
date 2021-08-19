@@ -32,6 +32,7 @@ class Cpu6502 {
     };
     bool GetFlag(Flag flag);
     void SetFlag(Flag flag, bool val);
+    void SetPIgnoreB(uint8_t new_p);
 
     struct AddrVal {
       uint16_t addr = 0;  // unused for kImmediate

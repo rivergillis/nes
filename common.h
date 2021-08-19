@@ -12,6 +12,9 @@
 #include <cstring>
 #include <iostream>
 #include <vector>
+#include <chrono>
+
+using Clock = std::chrono::steady_clock;
 
 template <typename T>
 uint8_t Bit(uint8_t bit_pos, T val) {
@@ -41,6 +44,10 @@ std::string string_format( const std::string& format, Args ... args )
     auto buf = std::make_unique<char[]>( size );
     std::snprintf( buf.get(), size, format.c_str(), args ... );
     return std::string( buf.get(), buf.get() + size - 1 ); // We don't want the '\0' inside
+}
+
+inline std::string StringMsSince(Clock::time_point start) {
+  return string_format("%dms", std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - start).count());
 }
 
 #endif

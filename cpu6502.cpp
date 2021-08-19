@@ -176,6 +176,25 @@ void Cpu6502::SetFlag(Cpu6502::Flag flag, bool val) {
   }
 }
 
+void Cpu6502::SetPIgnoreB(uint8_t new_p) {
+  uint8_t old_p = p_;
+
+  // Need to preserve bits 4 and 5 from original p
+  // There's probably a better way to do this...
+  if (Bit(4, old_p)) {
+    new_p |= (1 << 4);
+  } else {
+    new_p &= ~(1 << 4);
+  }
+
+  if (Bit(5, old_p)) {
+    new_p |= (1 << 5);
+  } else {
+    new_p &= ~(1 << 5);
+  }
+  p_ = new_p;
+}
+
 uint8_t Cpu6502::NextImmediate() {
   uint8_t val = memory_view_->Get(program_counter_++);
   DBG("%02X     ", val);
@@ -322,7 +341,7 @@ void Cpu6502::BRK(AddressingMode mode) {
 }
 
 void Cpu6502::RTI(AddressingMode mode) {
-  p_ = (PopStack() & 0b1100'1111);  // clear B
+  SetPIgnoreB(PopStack());
   program_counter_ = PopStack16();
   DBGPADSINGLE("RTI");
 }
@@ -520,24 +539,7 @@ void Cpu6502::PHA(AddressingMode mode) {
 }
 
 void Cpu6502::PLP(AddressingMode mode) {
-  uint8_t old_p = p_;
-  p_ = PopStack();
-
-
-  // Need to preserve bits 4 and 5 from original p
-  // There's probably a better way to do this...
-  if (Bit(4, old_p)) {
-    p_ |= (1 << 4);
-  } else {
-    p_ &= ~(1 << 4);
-  }
-
-  if (Bit(5, old_p)) {
-    p_ |= (1 << 5);
-  } else {
-    p_ &= ~(1 << 5);
-  }
-
+  SetPIgnoreB(PopStack());
   DBGPADSINGLE("PLP");
 }
 

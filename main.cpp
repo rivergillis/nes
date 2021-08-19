@@ -2,6 +2,7 @@
 #include <string>
 
 #include "cpu6502.h"
+#include "common.h"
 
 // doc: https://www.qmtpro.com/~nes/misc/nestest.txt
 // good log: https://www.qmtpro.com/~nes/misc/nestest.log
@@ -10,9 +11,11 @@ const std::string kTestRomPath = "/Users/river/code/nes/roms/nestest.nes";
 
 void Run() {
   Cpu6502 cpu(kTestRomPath);
+  auto start_time = Clock::now();
   for (int i = 0; i < 1000; i++) {
     cpu.RunCycle();
   }
+  std::cout << "Executed 1000 instructions in " << StringMsSince(start_time) << std::endl;
 }
 
 int main(int argc, char* args[]) {
