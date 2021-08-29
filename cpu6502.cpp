@@ -809,6 +809,18 @@ void Cpu6502::UN_NOP(AddressingMode mode) {
   DBGPAD("NOP %s", AddrValString(addrval, mode).c_str());
 }
 
+void Cpu6502::UN_LAX(AddressingMode mode) {
+  AddrVal addrval = NextAddrVal(mode, /*unoficial=*/true);
+  cycle_ += addrval.page_crossed;
+  DBGPAD("LAX %s", AddrValString(addrval, mode).c_str());
+  // LDA then TAX. So just load into both.
+  uint8_t val = addrval.val;
+  SetFlag(Flag::Z, val == 0);
+  SetFlag(Flag::N, !Pos(val));
+  x_ = val;
+  a_ = val;
+}
+
 uint16_t Cpu6502::NextAddr(AddressingMode mode, bool* page_crossed) {
   switch (mode) {
     case AddressingMode::kZeroPage:
@@ -1089,9 +1101,12 @@ void Cpu6502::BuildInstructionSet() {
   ADD_INSTR(0x7A, UN_NOP, AddressingMode::kNone, 2);
   ADD_INSTR(0xDA, UN_NOP, AddressingMode::kNone, 2);
   ADD_INSTR(0xFA, UN_NOP, AddressingMode::kNone, 2);
-
-
-
+  ADD_INSTR(0xA3, UN_LAX, AddressingMode::kIndirectX, 6); // (d,x)
+  ADD_INSTR(0xA7, UN_LAX, AddressingMode::kZeroPage, 3); // d
+  ADD_INSTR(0xAF, UN_LAX, AddressingMode::kAbsolute, 4); // a
+  ADD_INSTR(0xB3, UN_LAX, AddressingMode::kIndirectY, 5); // (d),Y 
+  ADD_INSTR(0xB7, UN_LAX, AddressingMode::kZeroPageY, 4); // d,Y
+  ADD_INSTR(0xBF, UN_LAX, AddressingMode::kAbsoluteY, 4); // a,Y
 
   VDBG("Instruction set built.\n");
 }

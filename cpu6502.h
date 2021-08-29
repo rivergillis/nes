@@ -144,6 +144,7 @@ class Cpu6502 {
     DEF_INSTR(DEC);
     // Unofficial instructions
     DEF_INSTR(UN_NOP);
+    DEF_INSTR(UN_LAX);  // LDA then TAX
 
     // Instruction set keyed on opcode.
     struct Instruction {
