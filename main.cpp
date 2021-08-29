@@ -12,10 +12,10 @@ const std::string kTestRomPath = "/Users/river/code/nes/roms/nestest.nes";
 void Run() {
   Cpu6502 cpu(kTestRomPath);
   auto start_time = Clock::now();
-  for (int i = 0; i < 5000; i++) {
+  for (int i = 0; i < 8991; i++) {
     cpu.RunCycle();
   }
-  std::cout << "Executed 5000 instructions in " << StringMsSince(start_time) << std::endl;
+  std::cout << "Executed 8991 instructions in " << StringMsSince(start_time) << std::endl;
 }
 
 int main(int argc, char* args[]) {

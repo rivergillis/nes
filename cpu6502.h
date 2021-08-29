@@ -50,6 +50,8 @@ class Cpu6502 {
     uint16_t NextAbsoluteY(bool* page_crossed);
     uint16_t NextIndirectX();
     uint16_t NextIndirectY(bool* page_crossed);
+    // Only for JMP. This doesn't appear to be documented in very many places, but the indirection
+    // here cannot cross pages. So JMP ($2FF) should read $2FF and $200.
     uint16_t NextAbsoluteIndirect(); // only JMP
     // For branching, decodes next offset into an address.
     uint16_t NextRelativeAddr(bool* page_crossed);

@@ -238,29 +238,23 @@ uint16_t Cpu6502::NextIndirectX() {
   uint16_t zero_addr = memory_view_->Get(program_counter_++);
   DBG("%02X     ", static_cast<uint8_t>(zero_addr));
   zero_addr = (zero_addr + x_) % 0x100;
-  return memory_view_->Get16(zero_addr, /*zero_page_wrap=*/true);
+  return memory_view_->Get16(zero_addr, /*page_wrap=*/true);
 }
 uint16_t Cpu6502::NextIndirectY(bool* page_crossed) {
   // get ZP addr, then read full addr from it and add Y
   uint16_t zero_addr = memory_view_->Get(program_counter_++);
   DBG("%02X     ", static_cast<uint8_t>(zero_addr));
-  uint16_t addr = memory_view_->Get16(zero_addr, /*zero_page_wrap=*/true);
+  uint16_t addr = memory_view_->Get16(zero_addr, /*page_wrap=*/true);
   *page_crossed = CrossedPage(addr, addr + y_);
   return addr + y_;
 }
 
-// have
-// DBB5  6C FF 02  JMP ($02FF) = A900              A:60 X:07 Y:00 P:65 SP:F9 CYC:9615
-// need
-// DBB5  6C FF 02  JMP ($02FF) = 0300              A:60 X:07 Y:00 P:65 SP:F9 CYC:9615
 uint16_t Cpu6502::NextAbsoluteIndirect() {
   uint16_t indirect = memory_view_->Get16(program_counter_);
   DBG("%02X %02X  ", static_cast<uint8_t>(indirect), static_cast<uint8_t>(indirect >> 8));
   program_counter_ += 2;
-  DBG("\nLSB at %04X MSB at %04X. LSB is %02X MSB is %02X\n", 
-    indirect, indirect + 1,
-    memory_view_->Get(indirect), memory_view_->Get(indirect + 1));
-  return memory_view_->Get16(indirect);
+
+  return memory_view_->Get16(indirect, /*page_wrap=*/true);
 }
 
 uint16_t Cpu6502::NextRelativeAddr(bool* page_crossed) {

@@ -15,11 +15,15 @@ uint8_t MemoryView::Get(uint16_t addr) {
   }
 }
 
-uint16_t MemoryView::Get16(uint16_t addr, bool zero_page_wrap) {
-  if (!zero_page_wrap) {
+uint16_t MemoryView::Get16(uint16_t addr, bool page_wrap) {
+  if (!page_wrap) {
     return static_cast<uint16_t>(Get(addr + 1)) << 8 | Get(addr);
   } else {
-    return static_cast<uint16_t>(Get((addr + 1) % 0x100)) << 8 | Get(addr);
+    uint16_t msb_addr = addr + 1;
+    if (CrossedPage(msb_addr, addr)) {
+      msb_addr -= 0x100;
+    }
+    return static_cast<uint16_t>(Get(msb_addr)) << 8 | Get(addr);
   }
 }
 
