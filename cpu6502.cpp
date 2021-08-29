@@ -790,6 +790,26 @@ void Cpu6502::STY(AddressingMode mode) {
   memory_view_->Set(addr, y_);
 }
 
+void Cpu6502::INC(AddressingMode mode) {
+  AddrVal addrval = NextAddrVal(mode);
+  uint16_t addr = addrval.addr;
+  DBGPAD("INC %s", AddrValString(addrval, mode).c_str());
+  uint8_t result = memory_view_->Get(addr) + 1;
+  memory_view_->Set(addr, result);
+  SetFlag(Flag::Z, result == 0);
+  SetFlag(Flag::N, !Pos(result));
+}
+
+void Cpu6502::DEC(AddressingMode mode) {
+  AddrVal addrval = NextAddrVal(mode);
+  uint16_t addr = addrval.addr;
+  DBGPAD("DEC %s", AddrValString(addrval, mode).c_str());
+  uint8_t result = memory_view_->Get(addr) - 1;
+  memory_view_->Set(addr, result);
+  SetFlag(Flag::Z, result == 0);
+  SetFlag(Flag::N, !Pos(result));
+}
+
 uint16_t Cpu6502::NextAddr(AddressingMode mode, bool* page_crossed) {
   switch (mode) {
     case AddressingMode::kZeroPage:
@@ -864,8 +884,10 @@ std::string Cpu6502::AddrValString(AddrVal addrval, AddressingMode mode, bool is
       return string_format("($%02X,X) @ %02X = %04X = %02X", target, (target + x_) % 0x100, addrval.addr, addrval.val);
     }
     case AddressingMode::kIndirectY: {
+// D940  B1 97     LDA ($97),Y = FFFFFFFF @ 0033 = A3A:FF X:65 Y:34 P:65 SP:FB CYC:8793 wtf?
       uint8_t target = memory_view_->Get(program_counter_ - 1);
-      return string_format("($%02X),Y @ %02X = %04X = %02X", target, addrval.addr - y_, addrval.addr, addrval.val);
+      uint16_t indirect = addrval.addr - y_;
+      return string_format("($%02X),Y = %04X @ %04X = %02X", target, indirect, addrval.addr, addrval.val);
     }
     case AddressingMode::kAbsoluteIndirect: {
       uint16_t target = memory_view_->Get16(program_counter_ - 2);
@@ -1026,6 +1048,14 @@ void Cpu6502::BuildInstructionSet() {
   ADD_INSTR(0x84, STY, AddressingMode::kZeroPage, 3);
   ADD_INSTR(0x94, STY, AddressingMode::kZeroPageX, 4);
   ADD_INSTR(0x8C, STY, AddressingMode::kAbsolute, 4);
+  ADD_INSTR(0xE6, INC, AddressingMode::kZeroPage, 5);
+  ADD_INSTR(0xF6, INC, AddressingMode::kZeroPageX, 6);
+  ADD_INSTR(0xEE, INC, AddressingMode::kAbsolute, 6);
+  ADD_INSTR(0xFE, INC, AddressingMode::kAbsoluteX, 7);
+  ADD_INSTR(0xC6, DEC, AddressingMode::kZeroPage, 5);
+  ADD_INSTR(0xD6, DEC, AddressingMode::kZeroPageX, 6);
+  ADD_INSTR(0xCE, DEC, AddressingMode::kAbsolute, 6);
+  ADD_INSTR(0xDE, DEC, AddressingMode::kAbsoluteX, 7);
 
   VDBG("Instruction set built.\n");
 }
