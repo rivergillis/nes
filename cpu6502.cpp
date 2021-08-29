@@ -248,10 +248,18 @@ uint16_t Cpu6502::NextIndirectY(bool* page_crossed) {
   *page_crossed = CrossedPage(addr, addr + y_);
   return addr + y_;
 }
+
+// have
+// DBB5  6C FF 02  JMP ($02FF) = A900              A:60 X:07 Y:00 P:65 SP:F9 CYC:9615
+// need
+// DBB5  6C FF 02  JMP ($02FF) = 0300              A:60 X:07 Y:00 P:65 SP:F9 CYC:9615
 uint16_t Cpu6502::NextAbsoluteIndirect() {
   uint16_t indirect = memory_view_->Get16(program_counter_);
   DBG("%02X %02X  ", static_cast<uint8_t>(indirect), static_cast<uint8_t>(indirect >> 8));
   program_counter_ += 2;
+  DBG("\nLSB at %04X MSB at %04X. LSB is %02X MSB is %02X\n", 
+    indirect, indirect + 1,
+    memory_view_->Get(indirect), memory_view_->Get(indirect + 1));
   return memory_view_->Get16(indirect);
 }
 
@@ -884,7 +892,6 @@ std::string Cpu6502::AddrValString(AddrVal addrval, AddressingMode mode, bool is
       return string_format("($%02X,X) @ %02X = %04X = %02X", target, (target + x_) % 0x100, addrval.addr, addrval.val);
     }
     case AddressingMode::kIndirectY: {
-// D940  B1 97     LDA ($97),Y = FFFFFFFF @ 0033 = A3A:FF X:65 Y:34 P:65 SP:FB CYC:8793 wtf?
       uint8_t target = memory_view_->Get(program_counter_ - 1);
       uint16_t indirect = addrval.addr - y_;
       return string_format("($%02X),Y = %04X @ %04X = %02X", target, indirect, addrval.addr, addrval.val);
