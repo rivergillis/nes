@@ -783,6 +783,13 @@ void Cpu6502::ROL(AddressingMode mode) {
   SetFlag(Flag::N, !Pos(result));
 }
 
+void Cpu6502::STY(AddressingMode mode) {
+  AddrVal addrval = NextAddrVal(mode);
+  uint16_t addr = addrval.addr;
+  DBGPAD("STY %s", AddrValString(addrval, mode).c_str());
+  memory_view_->Set(addr, y_);
+}
+
 uint16_t Cpu6502::NextAddr(AddressingMode mode, bool* page_crossed) {
   switch (mode) {
     case AddressingMode::kZeroPage:
@@ -854,7 +861,7 @@ std::string Cpu6502::AddrValString(AddrVal addrval, AddressingMode mode, bool is
     }
     case AddressingMode::kIndirectX: {
       uint8_t target = memory_view_->Get(program_counter_ - 1);
-      return string_format("($%02X,X) @ %02X = %04X = %02X", target, target + x_, addrval.addr, addrval.val);
+      return string_format("($%02X,X) @ %02X = %04X = %02X", target, (target + x_) % 0x100, addrval.addr, addrval.val);
     }
     case AddressingMode::kIndirectY: {
       uint8_t target = memory_view_->Get(program_counter_ - 1);
@@ -1016,6 +1023,9 @@ void Cpu6502::BuildInstructionSet() {
   ADD_INSTR(0x36, ROL, AddressingMode::kZeroPageX, 6);
   ADD_INSTR(0x2E, ROL, AddressingMode::kAbsolute, 6);
   ADD_INSTR(0x3E, ROL, AddressingMode::kAbsoluteX, 7);
+  ADD_INSTR(0x84, STY, AddressingMode::kZeroPage, 3);
+  ADD_INSTR(0x94, STY, AddressingMode::kZeroPageX, 4);
+  ADD_INSTR(0x8C, STY, AddressingMode::kAbsolute, 4);
 
   VDBG("Instruction set built.\n");
 }
