@@ -50,4 +50,12 @@ inline std::string StringMsSince(Clock::time_point start) {
   return string_format("%dms", std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - start).count());
 }
 
+inline uint8_t SetBit(uint8_t pos, uint8_t val, uint8_t new_bit_val) {
+  if (new_bit_val) {
+    return val | (1 << pos);
+  } else {
+    return val & ~(1 << pos);
+  }
+}
+
 #endif

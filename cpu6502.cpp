@@ -169,11 +169,7 @@ bool Cpu6502::GetFlag(Cpu6502::Flag flag) {
 }
 
 void Cpu6502::SetFlag(Cpu6502::Flag flag, bool val) {
-  if (val) {
-    p_ |= (1 << static_cast<uint8_t>(flag));
-  } else {
-    p_ &= ~(1 << static_cast<uint8_t>(flag));
-  }
+  p_ = SetBit(static_cast<uint8_t>(flag), p_, val);
 }
 
 void Cpu6502::SetPIgnoreB(uint8_t new_p) {
@@ -712,6 +708,48 @@ void Cpu6502::LSR(AddressingMode mode) {
   SetFlag(Flag::N, !Pos(result));
 }
 
+void Cpu6502::ASL(AddressingMode mode) {
+  AddrVal addrval = NextAddrVal(mode);
+  DBGPAD("ASL %s", AddrValString(addrval, mode).c_str());
+  // Accumulator needs to be set directly
+  uint8_t result = 0;
+  uint8_t initial_val = 0;
+  if (mode == AddressingMode::kAccumulator) {
+    initial_val = a_;
+    result = initial_val << 1;
+    a_ = result;
+  } else {
+    initial_val = addrval.val;
+    result = initial_val << 1;
+    memory_view_->Set(addrval.addr, result);
+  }
+  SetFlag(Flag::C, Bit(7, initial_val));
+  SetFlag(Flag::Z, result == 0);
+  SetFlag(Flag::N, !Pos(result));
+}
+
+void Cpu6502::ROR(AddressingMode mode) {
+  AddrVal addrval = NextAddrVal(mode);
+  DBGPAD("ROR %s", AddrValString(addrval, mode).c_str());
+  // Accumulator needs to be set directly
+  uint8_t result = 0;
+  uint8_t initial_val = 0;
+  if (mode == AddressingMode::kAccumulator) {
+    initial_val = a_;
+    result = initial_val >> 1;
+    result = SetBit(7, result, GetFlag(Flag::C));
+    a_ = result;
+  } else {
+    initial_val = addrval.val;
+    result = initial_val >> 1;
+    result = SetBit(7, result, GetFlag(Flag::C));
+    memory_view_->Set(addrval.addr, result);
+  }
+  SetFlag(Flag::C, Bit(0, initial_val));
+  SetFlag(Flag::Z, result == 0);
+  SetFlag(Flag::N, !Pos(result));
+}
+
 uint16_t Cpu6502::NextAddr(AddressingMode mode, bool* page_crossed) {
   switch (mode) {
     case AddressingMode::kZeroPage:
@@ -930,6 +968,16 @@ void Cpu6502::BuildInstructionSet() {
   ADD_INSTR(0x56, LSR, AddressingMode::kZeroPageX, 6);
   ADD_INSTR(0x4E, LSR, AddressingMode::kAbsolute, 6);
   ADD_INSTR(0x5E, LSR, AddressingMode::kAbsoluteX, 7);
+  ADD_INSTR(0x0A, ASL, AddressingMode::kAccumulator, 2);
+  ADD_INSTR(0x06, ASL, AddressingMode::kZeroPage, 5);
+  ADD_INSTR(0x16, ASL, AddressingMode::kZeroPageX, 6);
+  ADD_INSTR(0x0E, ASL, AddressingMode::kAbsolute, 6);
+  ADD_INSTR(0x1E, ASL, AddressingMode::kAbsoluteX, 7);
+  ADD_INSTR(0x6A, ROR, AddressingMode::kAccumulator, 2);
+  ADD_INSTR(0x66, ROR, AddressingMode::kZeroPage, 5);
+  ADD_INSTR(0x76, ROR, AddressingMode::kZeroPageX, 6);
+  ADD_INSTR(0x6E, ROR, AddressingMode::kAbsolute, 6);
+  ADD_INSTR(0x7E, ROR, AddressingMode::kAbsoluteX, 7);
 
   VDBG("Instruction set built.\n");
 }

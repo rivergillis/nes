@@ -134,6 +134,8 @@ class Cpu6502 {
     DEF_INSTR(TSX);
     DEF_INSTR(TXS);
     DEF_INSTR(LSR);
+    DEF_INSTR(ASL);
+    DEF_INSTR(ROR);
 
     // Instruction set keyed on opcode.
     struct Instruction {
