@@ -72,7 +72,7 @@ class Cpu6502 {
       kNone // needed?
     };
     uint16_t NextAddr(AddressingMode mode, bool* page_crossed);
-    AddrVal NextAddrVal(AddressingMode mode);
+    AddrVal NextAddrVal(AddressingMode mode, bool unofficial=false);
 
     void PushStack(uint8_t val);
     void PushStack16(uint16_t val);
@@ -142,6 +142,8 @@ class Cpu6502 {
     DEF_INSTR(STY);
     DEF_INSTR(INC);
     DEF_INSTR(DEC);
+    // Unofficial instructions
+    DEF_INSTR(UN_NOP);
 
     // Instruction set keyed on opcode.
     struct Instruction {

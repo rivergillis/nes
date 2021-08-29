@@ -193,42 +193,42 @@ void Cpu6502::SetPIgnoreB(uint8_t new_p) {
 
 uint8_t Cpu6502::NextImmediate() {
   uint8_t val = memory_view_->Get(program_counter_++);
-  DBG("%02X     ", val);
+  DBG("%02X    ", val);
   return val;
 }
 uint16_t Cpu6502::NextZeroPage() {
   uint16_t addr = memory_view_->Get(program_counter_++);
-  DBG("%02X     ", static_cast<uint8_t>(addr));
+  DBG("%02X    ", static_cast<uint8_t>(addr));
   return addr;
 }
 uint16_t Cpu6502::NextZeroPageX() {
   uint16_t addr = memory_view_->Get(program_counter_++);
-  DBG("%02X     ", static_cast<uint8_t>(addr));
+  DBG("%02X    ", static_cast<uint8_t>(addr));
   addr = (addr + x_) % 0x100;  // Add X to LSB of ZP
   return addr;
 }
 uint16_t Cpu6502::NextZeroPageY() {
   uint16_t addr = memory_view_->Get(program_counter_++);
-  DBG("%02X     ", static_cast<uint8_t>(addr));
+  DBG("%02X    ", static_cast<uint8_t>(addr));
   addr = (addr + y_) % 0x100;  // Add Y to LSB of ZP
   return addr;
 }
 uint16_t Cpu6502::NextAbsolute() {
   uint16_t addr = memory_view_->Get16(program_counter_);
-  DBG("%02X %02X  ", static_cast<uint8_t>(addr), static_cast<uint8_t>(addr >> 8)); // low first
+  DBG("%02X %02X ", static_cast<uint8_t>(addr), static_cast<uint8_t>(addr >> 8)); // low first
   program_counter_ += 2;
   return addr;
 }
 uint16_t Cpu6502::NextAbsoluteX(bool* page_crossed) {
   uint16_t addr = memory_view_->Get16(program_counter_);
-  DBG("%02X %02X  ", static_cast<uint8_t>(addr), static_cast<uint8_t>(addr >> 8));
+  DBG("%02X %02X ", static_cast<uint8_t>(addr), static_cast<uint8_t>(addr >> 8));
   program_counter_ += 2;
   *page_crossed = CrossedPage(addr, addr + x_);
   return addr + x_;
 }
 uint16_t Cpu6502::NextAbsoluteY(bool* page_crossed) {
   uint16_t addr = memory_view_->Get16(program_counter_);
-  DBG("%02X %02X  ", static_cast<uint8_t>(addr), static_cast<uint8_t>(addr >> 8));
+  DBG("%02X %02X ", static_cast<uint8_t>(addr), static_cast<uint8_t>(addr >> 8));
   program_counter_ += 2;
   *page_crossed = CrossedPage(addr, addr + y_);
   return addr + y_;
@@ -236,14 +236,14 @@ uint16_t Cpu6502::NextAbsoluteY(bool* page_crossed) {
 uint16_t Cpu6502::NextIndirectX() {
   // Get ZP, add X_ to LSB, then read full addr
   uint16_t zero_addr = memory_view_->Get(program_counter_++);
-  DBG("%02X     ", static_cast<uint8_t>(zero_addr));
+  DBG("%02X    ", static_cast<uint8_t>(zero_addr));
   zero_addr = (zero_addr + x_) % 0x100;
   return memory_view_->Get16(zero_addr, /*page_wrap=*/true);
 }
 uint16_t Cpu6502::NextIndirectY(bool* page_crossed) {
   // get ZP addr, then read full addr from it and add Y
   uint16_t zero_addr = memory_view_->Get(program_counter_++);
-  DBG("%02X     ", static_cast<uint8_t>(zero_addr));
+  DBG("%02X    ", static_cast<uint8_t>(zero_addr));
   uint16_t addr = memory_view_->Get16(zero_addr, /*page_wrap=*/true);
   *page_crossed = CrossedPage(addr, addr + y_);
   return addr + y_;
@@ -251,7 +251,7 @@ uint16_t Cpu6502::NextIndirectY(bool* page_crossed) {
 
 uint16_t Cpu6502::NextAbsoluteIndirect() {
   uint16_t indirect = memory_view_->Get16(program_counter_);
-  DBG("%02X %02X  ", static_cast<uint8_t>(indirect), static_cast<uint8_t>(indirect >> 8));
+  DBG("%02X %02X ", static_cast<uint8_t>(indirect), static_cast<uint8_t>(indirect >> 8));
   program_counter_ += 2;
 
   return memory_view_->Get16(indirect, /*page_wrap=*/true);
@@ -259,7 +259,7 @@ uint16_t Cpu6502::NextAbsoluteIndirect() {
 
 uint16_t Cpu6502::NextRelativeAddr(bool* page_crossed) {
   uint8_t offset_uint = memory_view_->Get(program_counter_++);
-  DBG("%02X     ", static_cast<uint8_t>(offset_uint));
+  DBG("%02X    ", static_cast<uint8_t>(offset_uint));
   // https://stackoverflow.com/questions/14623266/why-cant-i-reinterpret-cast-uint-to-int
   int8_t tmp;
   std::memcpy(&tmp, &offset_uint, sizeof(tmp));
@@ -343,17 +343,6 @@ void Cpu6502::RTI(AddressingMode mode) {
   program_counter_ = PopStack16();
   DBGPADSINGLE("RTI");
 }
-
-
-// have
-// CFF2  A1 FF     LDA ($FF,X) @ FF = FF04 = 67    A:5C X:00 Y:69 P:27 SP:FB CYC:2585
-// need
-// CFF2  A1 FF     LDA ($FF,X) @ FF = 0400 = 5D    A:5C X:00 Y:69 P:27 SP:FB CYC:2585
-
-// indirect x access
-// indirect x loading FF -- read 00FF and the byte after it (should wrap to read 0000!)
-      // uint8_t target = memory_view_->Get(program_counter_ - 1);
-      // return string_format("($%02X,X) @ %02X = %04X = %02X", target, target + x_, addrval.addr, addrval.val);
 
 void Cpu6502::LDX(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
@@ -812,6 +801,14 @@ void Cpu6502::DEC(AddressingMode mode) {
   SetFlag(Flag::N, !Pos(result));
 }
 
+/// Unoficial Opcodes
+
+void Cpu6502::UN_NOP(AddressingMode mode) {
+  AddrVal addrval = NextAddrVal(mode, /*unoficial=*/true);
+  cycle_ += addrval.page_crossed;
+  DBGPAD("NOP %s", AddrValString(addrval, mode).c_str());
+}
+
 uint16_t Cpu6502::NextAddr(AddressingMode mode, bool* page_crossed) {
   switch (mode) {
     case AddressingMode::kZeroPage:
@@ -839,16 +836,22 @@ uint16_t Cpu6502::NextAddr(AddressingMode mode, bool* page_crossed) {
   }
 }
 
-Cpu6502::AddrVal Cpu6502::NextAddrVal(AddressingMode mode) {
+Cpu6502::AddrVal Cpu6502::NextAddrVal(AddressingMode mode, bool unofficial) {
   if (mode == AddressingMode::kImmediate) {
-    return {0, NextImmediate()};
+    uint8_t imm = NextImmediate();
+    if (unofficial) DBG("*"); else DBG(" ");
+    return {0, imm};
   } else if (mode == AddressingMode::kAccumulator) {
-    DBG("       ");
+    DBG("      "); if (unofficial) DBG("*"); else DBG(" ");
+    return {0, a_};
+  } else if (mode == AddressingMode::kNone) {
+    DBG("      "); if (unofficial) DBG("*"); else DBG(" ");
     return {0, a_};
   }
   AddrVal addrval;
   addrval.addr = NextAddr(mode, &addrval.page_crossed);
   addrval.val = VAL(addrval.addr);
+  if (unofficial) DBG("*"); else DBG(" ");
   return addrval;
 }
 
@@ -1057,6 +1060,38 @@ void Cpu6502::BuildInstructionSet() {
   ADD_INSTR(0xD6, DEC, AddressingMode::kZeroPageX, 6);
   ADD_INSTR(0xCE, DEC, AddressingMode::kAbsolute, 6);
   ADD_INSTR(0xDE, DEC, AddressingMode::kAbsoluteX, 7);
+
+  // Unofficial
+  ADD_INSTR(0x04, UN_NOP, AddressingMode::kZeroPage, 3);  // d = zero page
+  ADD_INSTR(0x44, UN_NOP, AddressingMode::kZeroPage, 3);  // d
+  ADD_INSTR(0x64, UN_NOP, AddressingMode::kZeroPage, 3);  // d
+  ADD_INSTR(0x0C, UN_NOP, AddressingMode::kAbsolute, 4);  // probably absolute not accum
+  ADD_INSTR(0x14, UN_NOP, AddressingMode::kZeroPageX, 4);  // d,x = zero page, x
+  ADD_INSTR(0x34, UN_NOP, AddressingMode::kZeroPageX, 4);  // d,x
+  ADD_INSTR(0x54, UN_NOP, AddressingMode::kZeroPageX, 4);  // d,x
+  ADD_INSTR(0x74, UN_NOP, AddressingMode::kZeroPageX, 4);  // d,x
+  ADD_INSTR(0xD4, UN_NOP, AddressingMode::kZeroPageX, 4);  // d,x
+  ADD_INSTR(0xF4, UN_NOP, AddressingMode::kZeroPageX, 4);  // d,x
+  ADD_INSTR(0x1C, UN_NOP, AddressingMode::kAbsoluteX, 4);  // a,x
+  ADD_INSTR(0x3C, UN_NOP, AddressingMode::kAbsoluteX, 4);  // a,x
+  ADD_INSTR(0x5C, UN_NOP, AddressingMode::kAbsoluteX, 4);  // a,x
+  ADD_INSTR(0x7C, UN_NOP, AddressingMode::kAbsoluteX, 4);  // a,x
+  ADD_INSTR(0xDC, UN_NOP, AddressingMode::kAbsoluteX, 4);  // a,x
+  ADD_INSTR(0xFC, UN_NOP, AddressingMode::kAbsoluteX, 4);  // a,x
+  ADD_INSTR(0x80, UN_NOP, AddressingMode::kImmediate, 2);  // #i = immediate
+  ADD_INSTR(0x89, UN_NOP, AddressingMode::kImmediate, 2);  // #i
+  ADD_INSTR(0x82, UN_NOP, AddressingMode::kImmediate, 2);  // #i
+  ADD_INSTR(0xC2, UN_NOP, AddressingMode::kImmediate, 2);  // #i
+  ADD_INSTR(0xE2, UN_NOP, AddressingMode::kImmediate, 2);  // #i
+  ADD_INSTR(0x1A, UN_NOP, AddressingMode::kNone, 2);
+  ADD_INSTR(0x3A, UN_NOP, AddressingMode::kNone, 2);
+  ADD_INSTR(0x5A, UN_NOP, AddressingMode::kNone, 2);
+  ADD_INSTR(0x7A, UN_NOP, AddressingMode::kNone, 2);
+  ADD_INSTR(0xDA, UN_NOP, AddressingMode::kNone, 2);
+  ADD_INSTR(0xFA, UN_NOP, AddressingMode::kNone, 2);
+
+
+
 
   VDBG("Instruction set built.\n");
 }
