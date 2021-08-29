@@ -15,8 +15,12 @@ uint8_t MemoryView::Get(uint16_t addr) {
   }
 }
 
-uint16_t MemoryView::Get16(uint16_t addr) {
-  return static_cast<uint16_t>(Get(addr + 1)) << 8 | Get(addr);
+uint16_t MemoryView::Get16(uint16_t addr, bool zero_page_wrap) {
+  if (!zero_page_wrap) {
+    return static_cast<uint16_t>(Get(addr + 1)) << 8 | Get(addr);
+  } else {
+    return static_cast<uint16_t>(Get((addr + 1) % 0x100)) << 8 | Get(addr);
+  }
 }
 
 void MemoryView::Set(uint16_t addr, uint8_t val) {

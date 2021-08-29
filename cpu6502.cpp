@@ -204,13 +204,13 @@ uint16_t Cpu6502::NextZeroPage() {
 uint16_t Cpu6502::NextZeroPageX() {
   uint16_t addr = memory_view_->Get(program_counter_++);
   DBG("%02X     ", static_cast<uint8_t>(addr));
-  addr = (addr + x_) % 0xFF;  // Add X to LSB of ZP
+  addr = (addr + x_) % 0x100;  // Add X to LSB of ZP
   return addr;
 }
 uint16_t Cpu6502::NextZeroPageY() {
   uint16_t addr = memory_view_->Get(program_counter_++);
   DBG("%02X     ", static_cast<uint8_t>(addr));
-  addr = (addr + y_) % 0xFF;  // Add Y to LSB of ZP
+  addr = (addr + y_) % 0x100;  // Add Y to LSB of ZP
   return addr;
 }
 uint16_t Cpu6502::NextAbsolute() {
@@ -237,14 +237,14 @@ uint16_t Cpu6502::NextIndirectX() {
   // Get ZP, add X_ to LSB, then read full addr
   uint16_t zero_addr = memory_view_->Get(program_counter_++);
   DBG("%02X     ", static_cast<uint8_t>(zero_addr));
-  zero_addr = (zero_addr + x_) % 0xFF;
-  return memory_view_->Get16(zero_addr);
+  zero_addr = (zero_addr + x_) % 0x100;
+  return memory_view_->Get16(zero_addr, /*zero_page_wrap=*/true);
 }
 uint16_t Cpu6502::NextIndirectY(bool* page_crossed) {
   // get ZP addr, then read full addr from it and add Y
   uint16_t zero_addr = memory_view_->Get(program_counter_++);
   DBG("%02X     ", static_cast<uint8_t>(zero_addr));
-  uint16_t addr = memory_view_->Get16(zero_addr);
+  uint16_t addr = memory_view_->Get16(zero_addr, /*zero_page_wrap=*/true);
   *page_crossed = CrossedPage(addr, addr + y_);
   return addr + y_;
 }
@@ -341,6 +341,17 @@ void Cpu6502::RTI(AddressingMode mode) {
   program_counter_ = PopStack16();
   DBGPADSINGLE("RTI");
 }
+
+
+// have
+// CFF2  A1 FF     LDA ($FF,X) @ FF = FF04 = 67    A:5C X:00 Y:69 P:27 SP:FB CYC:2585
+// need
+// CFF2  A1 FF     LDA ($FF,X) @ FF = 0400 = 5D    A:5C X:00 Y:69 P:27 SP:FB CYC:2585
+
+// indirect x access
+// indirect x loading FF -- read 00FF and the byte after it (should wrap to read 0000!)
+      // uint8_t target = memory_view_->Get(program_counter_ - 1);
+      // return string_format("($%02X,X) @ %02X = %04X = %02X", target, target + x_, addrval.addr, addrval.val);
 
 void Cpu6502::LDX(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
@@ -750,6 +761,28 @@ void Cpu6502::ROR(AddressingMode mode) {
   SetFlag(Flag::N, !Pos(result));
 }
 
+void Cpu6502::ROL(AddressingMode mode) {
+  AddrVal addrval = NextAddrVal(mode);
+  DBGPAD("ROL %s", AddrValString(addrval, mode).c_str());
+  // Accumulator needs to be set directly
+  uint8_t result = 0;
+  uint8_t initial_val = 0;
+  if (mode == AddressingMode::kAccumulator) {
+    initial_val = a_;
+    result = initial_val << 1;
+    result = SetBit(0, result, GetFlag(Flag::C));
+    a_ = result;
+  } else {
+    initial_val = addrval.val;
+    result = initial_val << 1;
+    result = SetBit(0, result, GetFlag(Flag::C));
+    memory_view_->Set(addrval.addr, result);
+  }
+  SetFlag(Flag::C, Bit(7, initial_val));
+  SetFlag(Flag::Z, result == 0);
+  SetFlag(Flag::N, !Pos(result));
+}
+
 uint16_t Cpu6502::NextAddr(AddressingMode mode, bool* page_crossed) {
   switch (mode) {
     case AddressingMode::kZeroPage:
@@ -978,6 +1011,11 @@ void Cpu6502::BuildInstructionSet() {
   ADD_INSTR(0x76, ROR, AddressingMode::kZeroPageX, 6);
   ADD_INSTR(0x6E, ROR, AddressingMode::kAbsolute, 6);
   ADD_INSTR(0x7E, ROR, AddressingMode::kAbsoluteX, 7);
+  ADD_INSTR(0x2A, ROL, AddressingMode::kAccumulator, 2);
+  ADD_INSTR(0x26, ROL, AddressingMode::kZeroPage, 5);
+  ADD_INSTR(0x36, ROL, AddressingMode::kZeroPageX, 6);
+  ADD_INSTR(0x2E, ROL, AddressingMode::kAbsolute, 6);
+  ADD_INSTR(0x3E, ROL, AddressingMode::kAbsoluteX, 7);
 
   VDBG("Instruction set built.\n");
 }

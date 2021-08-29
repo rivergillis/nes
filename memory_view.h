@@ -15,7 +15,7 @@ class MemoryView {
     MemoryView(uint8_t* internal_ram, Ppu* ppu, Mapper* mapper); 
 
     uint8_t Get(uint16_t addr);
-    uint16_t Get16(uint16_t addr);
+    uint16_t Get16(uint16_t addr, bool zero_page_wrap = false);
     void Set(uint16_t addr, uint8_t val);
 
   private:
