@@ -124,7 +124,7 @@ class Cpu6502 {
     DEF_INSTR(LDY);
     DEF_INSTR(CPX);
     DEF_INSTR(CPY);
-    DEF_INSTR(SBC);
+    void SBC(AddressingMode mode, bool unofficial=false);
     DEF_INSTR(INX);
     DEF_INSTR(INY);
     DEF_INSTR(DEX);
@@ -145,6 +145,10 @@ class Cpu6502 {
     // Unofficial instructions
     DEF_INSTR(UN_NOP);
     DEF_INSTR(UN_LAX);  // LDA then TAX
+    DEF_INSTR(UN_SAX);  // ST(A&X)
+    DEF_INSTR(UN_SBC);
+    DEF_INSTR(UN_ADC);
+    DEF_INSTR(UN_DCP);  // DEC then CMP
 
     // Instruction set keyed on opcode.
     struct Instruction {
