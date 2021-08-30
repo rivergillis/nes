@@ -143,12 +143,15 @@ void Cpu6502::LoadNes1File(std::vector<uint8_t> bytes) {
   if (flags6 & 0b0010'0000) {
     throw std::runtime_error("Rom has a trainer!");
   }
-  uint8_t flags7 = bytes[7];  // lsb are upper nybble of mapper num
-  uint8_t mapper_number = ((flags7 >> 4) << 4) | (flags6 >> 4);
 
-  uint8_t prg_ram_size = bytes[8] == 0x0 ? static_cast<uint8_t>(0x2000) : bytes[8] * 0x2000;
-  DBG("Mapper ID %d PRG_ROM sz %d CHAR_ROM sz %d PRG_RAM sz %d\n",
-      mapper_number, prg_rom_size, chr_rom_size, prg_ram_size);
+      #ifdef DEBUG
+      // TODO: These things are probably more than just for debug...
+      uint8_t flags7 = bytes[7];  // lsb are upper nybble of mapper num
+      uint8_t mapper_number = ((flags7 >> 4) << 4) | (flags6 >> 4); 
+      uint8_t prg_ram_size = bytes[8] == 0x0 ? static_cast<uint8_t>(0x2000) : bytes[8] * 0x2000;
+      DBG("Mapper ID %d PRG_ROM sz %d CHAR_ROM sz %d PRG_RAM sz %d\n",
+          mapper_number, prg_rom_size, chr_rom_size, prg_ram_size);
+      #endif
   
   if (chr_rom_size > 0) {
     ppu_ = std::make_unique<Ppu>(bytes.data() + 16 + prg_rom_size, chr_rom_size);

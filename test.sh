@@ -1,7 +1,7 @@
 #!/bin/bash
 
 make clean
-make nes TEST_DEFINES="-D NESTEST"
+make nes TEST_DEFINES="-U DEBUG -D NESTEST"
 ./nes 2>&1 | tee test/out.log
 
 ## Ignore PPU:
