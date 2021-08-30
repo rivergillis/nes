@@ -1194,10 +1194,10 @@ void Cpu6502::BuildInstructionSet() {
   ADD_INSTR(0x03, UN_SLO, AddressingMode::kIndirectX, 8); // (d,x)
   ADD_INSTR(0x07, UN_SLO, AddressingMode::kZeroPage, 5); // d
   ADD_INSTR(0x0F, UN_SLO, AddressingMode::kAbsolute, 6); // a
-  ADD_INSTR(0x13, UN_SLO, AddressingMode::kIndirectY, 8); // (d),Y 
+  ADD_INSTR(0x13, UN_SLO, AddressingMode::kIndirectY, 7); // (d),Y 
   ADD_INSTR(0x17, UN_SLO, AddressingMode::kZeroPageX, 6); // d,X
-  ADD_INSTR(0x1B, UN_SLO, AddressingMode::kAbsoluteY, 7); // a,Y
-  ADD_INSTR(0x1F, UN_SLO, AddressingMode::kAbsoluteX, 7); // a,X
+  ADD_INSTR(0x1B, UN_SLO, AddressingMode::kAbsoluteY, 6); // a,Y
+  ADD_INSTR(0x1F, UN_SLO, AddressingMode::kAbsoluteX, 6); // a,X
 
   VDBG("Instruction set built.\n");
 }
