@@ -833,16 +833,6 @@ void Cpu6502::UN_SBC(AddressingMode mode) {
   SBC(mode, /*unofficial=*/true);
 }
 
-
-// have
-// EA27  D3 45    *DCP ($45),Y = 0548 @ 0647 = EB  A:40 X:02 Y:FF P:64 SP:FB CYC:17314
-// EA29  EA        NOP                             A:40 X:02 Y:FF P:64 SP:FB CYC:17323
-// need
-// EA27  D3 45    *DCP ($45),Y = 0548 @ 0647 = EB  A:40 X:02 Y:FF P:64 SP:FB CYC:17314
-// EA29  EA        NOP                             A:40 X:02 Y:FF P:64 SP:FB CYC:17322
-// so need 1 less cycle...
-
-
 void Cpu6502::UN_DCP(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode, /*unofficial=*/true);
   uint16_t addr = addrval.addr;
@@ -892,8 +882,8 @@ void Cpu6502::UN_SLO(AddressingMode mode) {
 
   a_ |= result;
   SetFlag(Flag::C, Bit(7, initial_val));
-  SetFlag(Flag::Z, result == 0);
-  SetFlag(Flag::N, !Pos(result));
+  SetFlag(Flag::Z, a_ == 0);
+  SetFlag(Flag::N, !Pos(a_));
 }
 
 uint16_t Cpu6502::NextAddr(AddressingMode mode, bool* page_crossed) {
