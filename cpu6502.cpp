@@ -902,6 +902,40 @@ void Cpu6502::UN_RLA(AddressingMode mode) {
   SetFlag(Flag::N, !Pos(a_));
 }
 
+void Cpu6502::UN_SRE(AddressingMode mode) {
+  AddrVal addrval = NextAddrVal(mode, /*unofficial=*/true);
+  cycle_ += addrval.page_crossed;
+  DBGPAD("SRE %s", AddrValString(addrval, mode).c_str());
+  // LSR val then EOR it into A.
+  uint8_t initial_val = addrval.val;
+  uint8_t result = initial_val >> 1;
+  memory_view_->Set(addrval.addr, result);
+
+  a_ ^= result;
+  SetFlag(Flag::C, Bit(0, initial_val));
+  SetFlag(Flag::Z, a_ == 0);
+  SetFlag(Flag::N, !Pos(a_));
+}
+
+void Cpu6502::UN_RRA(AddressingMode mode) {
+  AddrVal addrval = NextAddrVal(mode, /*unofficial=*/true);
+  cycle_ += addrval.page_crossed;
+  DBGPAD("RRA %s", AddrValString(addrval, mode).c_str());
+  // ROR val then ADC it into A.
+  uint8_t initial_val = addrval.val;
+  uint8_t result = initial_val >> 1;
+  result = SetBit(7, result, GetFlag(Flag::C));
+  memory_view_->Set(addrval.addr, result);
+  SetFlag(Flag::C, Bit(0, initial_val));
+
+  uint16_t new_a = a_ + result + GetFlag(Flag::C);
+  SetFlag(Flag::C, new_a > 0xFF);
+  SetFlag(Flag::V, Pos(a_) && Pos(result) && !Pos(new_a));
+  a_ = new_a;
+  SetFlag(Flag::Z, a_ == 0);
+  SetFlag(Flag::N, !Pos(a_));
+}
+
 uint16_t Cpu6502::NextAddr(AddressingMode mode, bool* page_crossed) {
   switch (mode) {
     case AddressingMode::kZeroPage:
@@ -1221,6 +1255,20 @@ void Cpu6502::BuildInstructionSet() {
   ADD_INSTR(0x37, UN_RLA, AddressingMode::kZeroPageX, 6); // d,X
   ADD_INSTR(0x3B, UN_RLA, AddressingMode::kAbsoluteY, 6); // a,Y
   ADD_INSTR(0x3F, UN_RLA, AddressingMode::kAbsoluteX, 6); // a,X
+  ADD_INSTR(0x43, UN_SRE, AddressingMode::kIndirectX, 8); // (d,x)
+  ADD_INSTR(0x47, UN_SRE, AddressingMode::kZeroPage, 5); // d
+  ADD_INSTR(0x4F, UN_SRE, AddressingMode::kAbsolute, 6); // a
+  ADD_INSTR(0x53, UN_SRE, AddressingMode::kIndirectY, 7); // (d),Y 
+  ADD_INSTR(0x57, UN_SRE, AddressingMode::kZeroPageX, 6); // d,X
+  ADD_INSTR(0x5B, UN_SRE, AddressingMode::kAbsoluteY, 6); // a,Y
+  ADD_INSTR(0x5F, UN_SRE, AddressingMode::kAbsoluteX, 6); // a,X
+  ADD_INSTR(0x63, UN_RRA, AddressingMode::kIndirectX, 8); // (d,x)
+  ADD_INSTR(0x67, UN_RRA, AddressingMode::kZeroPage, 5); // d
+  ADD_INSTR(0x6F, UN_RRA, AddressingMode::kAbsolute, 6); // a
+  ADD_INSTR(0x73, UN_RRA, AddressingMode::kIndirectY, 7); // (d),Y 
+  ADD_INSTR(0x77, UN_RRA, AddressingMode::kZeroPageX, 6); // d,X
+  ADD_INSTR(0x7B, UN_RRA, AddressingMode::kAbsoluteY, 6); // a,Y
+  ADD_INSTR(0x7F, UN_RRA, AddressingMode::kAbsoluteX, 6); // a,X
 
   VDBG("Instruction set built.\n");
 }
