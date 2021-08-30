@@ -2,17 +2,6 @@
 
 #include "mapper_id.h"
 
-namespace { 
-void VDBG(const char* str, ...) {
-  #ifdef VDEBUG
-  va_list arglist;
-  va_start(arglist, str);
-  vprintf(str, arglist);
-  va_end(arglist);
-  #endif
-}
-}
-
 NromMapper::NromMapper(uint8_t* prg_rom, size_t prg_rom_size) {
   mapper_id_ = MapperId::kNrom;
   assert(prg_rom_size == 0x4000 || prg_rom_size == 0x8000);
@@ -21,7 +10,7 @@ NromMapper::NromMapper(uint8_t* prg_rom, size_t prg_rom_size) {
   memcpy(prg_rom_, prg_rom, prg_rom_size_);
 
   prg_ram_ = (uint8_t*)calloc(0x2000, sizeof(uint8_t)); // 8k
-  VDBG("Created NROM mapper with %d byte PRG_ROM and 8k PRG_RAM\n", prg_rom_size_);
+  DBG("Created NROM mapper with %llu byte PRG_ROM and 8k PRG_RAM\n", static_cast<uint64_t>(prg_rom_size_));
 }
 
 uint8_t NromMapper::Get(uint16_t addr) {

@@ -11,28 +11,13 @@
 
 namespace { 
 
-#define VAL(a) memory_view_->Get(a)
-#define DBGPAD(...) DBG("%-32s", string_format(__VA_ARGS__).c_str())
-#define DBGPADSINGLE(x) DBG("       "); DBGPAD("%s", x);
-
-// Used for nestest log goldens
-void DBG(const char* str, ...) {
-  #ifdef DEBUG
-  va_list arglist;
-  va_start(arglist, str);
-  vprintf(str, arglist);
-  va_end(arglist);
-  #endif
-}
-// used for everything else
-void VDBG(const char* str, ...) {
-  #ifdef VDEBUG
-  va_list arglist;
-  va_start(arglist, str);
-  vprintf(str, arglist);
-  va_end(arglist);
-  #endif
-}
+#ifdef NESTEST
+#define NTLOG(...) fprintf(stdout, __VA_ARGS__)
+#else
+#define NTLOG(...) {}
+#endif
+#define NTLOGPAD(...) NTLOG("%-32s", string_format(__VA_ARGS__).c_str())
+#define NTLOGPADSINGLE(x) NTLOG("       "); NTLOGPAD("%s", x);
 
 uint16_t StackAddr(uint8_t sp) {
   return ((0x01 << 8) | sp);
@@ -42,21 +27,27 @@ uint16_t StackAddr(uint8_t sp) {
 
 Cpu6502::Cpu6502(const std::string& file_path) {
   Reset(file_path);
-  VDBG("NES ready. PC: %#04x\n", program_counter_);
+  DBG("NES ready. PC: %#04x\n", program_counter_);
 }
 
 // TODO: Rename to RunInstruction?
 void Cpu6502::RunCycle() {
-  std::string prev_flags = string_format("A:%02X X:%02X Y:%02X P:%02X SP:%02X",
-    a_, x_, y_, p_, stack_pointer_);
-  uint64_t prev_cycle = cycle_;
+      #ifdef NESTEST
+      std::string prev_flags = string_format("A:%02X X:%02X Y:%02X P:%02X SP:%02X",
+        a_, x_, y_, p_, stack_pointer_);
+      uint64_t prev_cycle = cycle_;
+      #endif
   uint8_t opcode = memory_view_->Get(program_counter_);
-  DBG("%04X  %02X ", program_counter_, opcode);
+      #ifdef NESTEST
+      NTLOG("%04X  %02X ", program_counter_, opcode);
+      #endif
   program_counter_++;
   Instruction& instr = instructions_.at(opcode);
   instr.impl();
   cycle_ += instr.cycles;
-  DBG("%s PPU:  0,  0 CYC:%d\n", prev_flags.c_str(), prev_cycle);
+      #ifdef NESTEST
+      NTLOG("%s PPU:  0,  0 CYC:%llu\n", prev_flags.c_str(), prev_cycle);
+      #endif
 }
 
 void Cpu6502::Reset(const std::string& file_path) {
@@ -123,12 +114,12 @@ void Cpu6502::LoadCartrtidgeFile(const std::string& file_path) {
   }
 
   if (is_nes2) {
-    VDBG("Found %d byte NES 2.0 file.\n", bytes.size());
+    DBG("Found %llu byte NES 2.0 file.\n", static_cast<uint64_t>(bytes.size()));
     // TODO: Load NES 2.0 specific
     // Back-compat with ines 1.0
     LoadNes1File(bytes);
   } else if (is_ines) {
-    VDBG("Found %d byte iNES 1.0 file.\n", bytes.size());
+    DBG("Found %llu byte iNES 1.0 file.\n", static_cast<uint64_t>(bytes.size()));
     LoadNes1File(bytes);
   } else {
     throw std::runtime_error("Rom file is not iNES format.");
@@ -156,7 +147,7 @@ void Cpu6502::LoadNes1File(std::vector<uint8_t> bytes) {
   uint8_t mapper_number = ((flags7 >> 4) << 4) | (flags6 >> 4);
 
   uint8_t prg_ram_size = bytes[8] == 0x0 ? static_cast<uint8_t>(0x2000) : bytes[8] * 0x2000;
-  VDBG("Mapper ID %d PRG_ROM sz %d CHAR_ROM sz %d PRG_RAM sz %d\n",
+  DBG("Mapper ID %d PRG_ROM sz %d CHAR_ROM sz %d PRG_RAM sz %d\n",
       mapper_number, prg_rom_size, chr_rom_size, prg_ram_size);
   
   if (chr_rom_size > 0) {
@@ -197,42 +188,42 @@ void Cpu6502::SetPIgnoreB(uint8_t new_p) {
 
 uint8_t Cpu6502::NextImmediate() {
   uint8_t val = memory_view_->Get(program_counter_++);
-  DBG("%02X    ", val);
+  NTLOG("%02X    ", val);
   return val;
 }
 uint16_t Cpu6502::NextZeroPage() {
   uint16_t addr = memory_view_->Get(program_counter_++);
-  DBG("%02X    ", static_cast<uint8_t>(addr));
+  NTLOG("%02X    ", static_cast<uint8_t>(addr));
   return addr;
 }
 uint16_t Cpu6502::NextZeroPageX() {
   uint16_t addr = memory_view_->Get(program_counter_++);
-  DBG("%02X    ", static_cast<uint8_t>(addr));
+  NTLOG("%02X    ", static_cast<uint8_t>(addr));
   addr = (addr + x_) % 0x100;  // Add X to LSB of ZP
   return addr;
 }
 uint16_t Cpu6502::NextZeroPageY() {
   uint16_t addr = memory_view_->Get(program_counter_++);
-  DBG("%02X    ", static_cast<uint8_t>(addr));
+  NTLOG("%02X    ", static_cast<uint8_t>(addr));
   addr = (addr + y_) % 0x100;  // Add Y to LSB of ZP
   return addr;
 }
 uint16_t Cpu6502::NextAbsolute() {
   uint16_t addr = memory_view_->Get16(program_counter_);
-  DBG("%02X %02X ", static_cast<uint8_t>(addr), static_cast<uint8_t>(addr >> 8)); // low first
+  NTLOG("%02X %02X ", static_cast<uint8_t>(addr), static_cast<uint8_t>(addr >> 8)); // low first
   program_counter_ += 2;
   return addr;
 }
 uint16_t Cpu6502::NextAbsoluteX(bool* page_crossed) {
   uint16_t addr = memory_view_->Get16(program_counter_);
-  DBG("%02X %02X ", static_cast<uint8_t>(addr), static_cast<uint8_t>(addr >> 8));
+  NTLOG("%02X %02X ", static_cast<uint8_t>(addr), static_cast<uint8_t>(addr >> 8));
   program_counter_ += 2;
   *page_crossed = CrossedPage(addr, addr + x_);
   return addr + x_;
 }
 uint16_t Cpu6502::NextAbsoluteY(bool* page_crossed) {
   uint16_t addr = memory_view_->Get16(program_counter_);
-  DBG("%02X %02X ", static_cast<uint8_t>(addr), static_cast<uint8_t>(addr >> 8));
+  NTLOG("%02X %02X ", static_cast<uint8_t>(addr), static_cast<uint8_t>(addr >> 8));
   program_counter_ += 2;
   *page_crossed = CrossedPage(addr, addr + y_);
   return addr + y_;
@@ -240,14 +231,14 @@ uint16_t Cpu6502::NextAbsoluteY(bool* page_crossed) {
 uint16_t Cpu6502::NextIndirectX() {
   // Get ZP, add X_ to LSB, then read full addr
   uint16_t zero_addr = memory_view_->Get(program_counter_++);
-  DBG("%02X    ", static_cast<uint8_t>(zero_addr));
+  NTLOG("%02X    ", static_cast<uint8_t>(zero_addr));
   zero_addr = (zero_addr + x_) % 0x100;
   return memory_view_->Get16(zero_addr, /*page_wrap=*/true);
 }
 uint16_t Cpu6502::NextIndirectY(bool* page_crossed) {
   // get ZP addr, then read full addr from it and add Y
   uint16_t zero_addr = memory_view_->Get(program_counter_++);
-  DBG("%02X    ", static_cast<uint8_t>(zero_addr));
+  NTLOG("%02X    ", static_cast<uint8_t>(zero_addr));
   uint16_t addr = memory_view_->Get16(zero_addr, /*page_wrap=*/true);
   *page_crossed = CrossedPage(addr, addr + y_);
   return addr + y_;
@@ -255,7 +246,7 @@ uint16_t Cpu6502::NextIndirectY(bool* page_crossed) {
 
 uint16_t Cpu6502::NextAbsoluteIndirect() {
   uint16_t indirect = memory_view_->Get16(program_counter_);
-  DBG("%02X %02X ", static_cast<uint8_t>(indirect), static_cast<uint8_t>(indirect >> 8));
+  NTLOG("%02X %02X ", static_cast<uint8_t>(indirect), static_cast<uint8_t>(indirect >> 8));
   program_counter_ += 2;
 
   return memory_view_->Get16(indirect, /*page_wrap=*/true);
@@ -263,7 +254,7 @@ uint16_t Cpu6502::NextAbsoluteIndirect() {
 
 uint16_t Cpu6502::NextRelativeAddr(bool* page_crossed) {
   uint8_t offset_uint = memory_view_->Get(program_counter_++);
-  DBG("%02X    ", static_cast<uint8_t>(offset_uint));
+  NTLOG("%02X    ", static_cast<uint8_t>(offset_uint));
   // https://stackoverflow.com/questions/14623266/why-cant-i-reinterpret-cast-uint-to-int
   int8_t tmp;
   std::memcpy(&tmp, &offset_uint, sizeof(tmp));
@@ -318,7 +309,7 @@ void Cpu6502::ADC(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   cycle_ += addrval.page_crossed;
   uint8_t val = addrval.val;
-  DBGPAD("ADC %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("ADC %s", AddrValString(addrval, mode).c_str());
   uint16_t new_a = a_ + val + GetFlag(Flag::C);
   SetFlag(Flag::C, new_a > 0xFF);
   SetFlag(Flag::V, Pos(a_) && Pos(val) && !Pos(new_a));
@@ -330,7 +321,7 @@ void Cpu6502::ADC(AddressingMode mode) {
 void Cpu6502::JMP(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   uint16_t addr = addrval.addr;
-  DBGPAD("JMP %s", AddrValString(addrval, mode, /*is_jmp=*/true).c_str());
+  NTLOGPAD("JMP %s", AddrValString(addrval, mode, /*is_jmp=*/true).c_str());
   program_counter_ = addr;
 }
 
@@ -339,20 +330,20 @@ void Cpu6502::BRK(AddressingMode mode) {
   PushStack(p_ | 0b0011'0000);  // B=0b11
   program_counter_ = memory_view_->Get16(0xFFFE);
   SetFlag(Flag::I, true);
-  DBGPADSINGLE("BRK");
+  NTLOGPADSINGLE("BRK");
 }
 
 void Cpu6502::RTI(AddressingMode mode) {
   SetPIgnoreB(PopStack());
   program_counter_ = PopStack16();
-  DBGPADSINGLE("RTI");
+  NTLOGPADSINGLE("RTI");
 }
 
 void Cpu6502::LDX(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   cycle_ += addrval.page_crossed;
   uint8_t val = addrval.val;
-  DBGPAD("LDX %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("LDX %s", AddrValString(addrval, mode).c_str());
   SetFlag(Flag::Z, val == 0);
   SetFlag(Flag::N, !Pos(val));
   x_ = val;
@@ -361,7 +352,7 @@ void Cpu6502::LDX(AddressingMode mode) {
 void Cpu6502::STX(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   uint16_t addr = addrval.addr;
-  DBGPAD("STX %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("STX %s", AddrValString(addrval, mode).c_str());
   memory_view_->Set(addr, x_);
 }
 
@@ -369,20 +360,20 @@ void Cpu6502::JSR(AddressingMode mode) {
   uint16_t pc_to_return_to = program_counter_ + 1;
   AddrVal addrval = NextAddrVal(mode);
   uint16_t new_pc = addrval.addr;
-  DBGPAD("JSR %s", AddrValString(addrval, mode, /*is_jmp=*/true).c_str());
+  NTLOGPAD("JSR %s", AddrValString(addrval, mode, /*is_jmp=*/true).c_str());
   PushStack16(pc_to_return_to);
   program_counter_ = new_pc;
 }
 
 void Cpu6502::SEC(AddressingMode mode) {
   SetFlag(Flag::C, true);
-  DBGPADSINGLE("SEC");
+  NTLOGPADSINGLE("SEC");
 }
 
 void Cpu6502::BCS(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   uint16_t addr = addrval.addr;
-  DBGPAD("BCS %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("BCS %s", AddrValString(addrval, mode).c_str());
   if (GetFlag(Flag::C)) {
     program_counter_ = addr;
     cycle_ += addrval.page_crossed + 1;
@@ -391,13 +382,13 @@ void Cpu6502::BCS(AddressingMode mode) {
 
 void Cpu6502::CLC(AddressingMode mode) {
   SetFlag(Flag::C, false);
-  DBGPADSINGLE("CLC");
+  NTLOGPADSINGLE("CLC");
 }
 
 void Cpu6502::BCC(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   uint16_t addr = addrval.addr;
-  DBGPAD("BCC %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("BCC %s", AddrValString(addrval, mode).c_str());
   if (!GetFlag(Flag::C)) {
     program_counter_ = addr;
     cycle_ += addrval.page_crossed + 1;
@@ -408,7 +399,7 @@ void Cpu6502::LDA(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   cycle_ += addrval.page_crossed;
   uint8_t val = addrval.val;
-  DBGPAD("LDA %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("LDA %s", AddrValString(addrval, mode).c_str());
   SetFlag(Flag::Z, val == 0);
   SetFlag(Flag::N, !Pos(val));
   a_ = val;
@@ -417,7 +408,7 @@ void Cpu6502::LDA(AddressingMode mode) {
 void Cpu6502::BEQ(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   uint16_t addr = addrval.addr;
-  DBGPAD("BEQ %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("BEQ %s", AddrValString(addrval, mode).c_str());
   if (GetFlag(Flag::Z)) {
     program_counter_ = addr;
     cycle_ += addrval.page_crossed + 1;
@@ -427,7 +418,7 @@ void Cpu6502::BEQ(AddressingMode mode) {
 void Cpu6502::BNE(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   uint16_t addr = addrval.addr;
-  DBGPAD("BNE %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("BNE %s", AddrValString(addrval, mode).c_str());
   if (!GetFlag(Flag::Z)) {
     program_counter_ = addr;
     cycle_ += addrval.page_crossed + 1;
@@ -437,14 +428,14 @@ void Cpu6502::BNE(AddressingMode mode) {
 void Cpu6502::STA(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   uint16_t addr = addrval.addr;
-  DBGPAD("STA %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("STA %s", AddrValString(addrval, mode).c_str());
   memory_view_->Set(addr, a_);
 }
 
 void Cpu6502::BIT(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   uint8_t val = addrval.val;
-  DBGPAD("BIT %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("BIT %s", AddrValString(addrval, mode).c_str());
   uint8_t res = val & a_;
   SetFlag(Flag::Z, res == 0);
   SetFlag(Flag::V, Bit(6, val) == 1);
@@ -454,7 +445,7 @@ void Cpu6502::BIT(AddressingMode mode) {
 void Cpu6502::BVS(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   uint16_t addr = addrval.addr;
-  DBGPAD("BVS %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("BVS %s", AddrValString(addrval, mode).c_str());
   if (GetFlag(Flag::V)) {
     program_counter_ = addr;
     cycle_ += addrval.page_crossed + 1;
@@ -464,7 +455,7 @@ void Cpu6502::BVS(AddressingMode mode) {
 void Cpu6502::BVC(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   uint16_t addr = addrval.addr;
-  DBGPAD("BVC %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("BVC %s", AddrValString(addrval, mode).c_str());
   if (!GetFlag(Flag::V)) {
     program_counter_ = addr;
     cycle_ += addrval.page_crossed + 1;
@@ -474,7 +465,7 @@ void Cpu6502::BVC(AddressingMode mode) {
 void Cpu6502::BPL(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   uint16_t addr = addrval.addr;
-  DBGPAD("BPL %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("BPL %s", AddrValString(addrval, mode).c_str());
   if (!GetFlag(Flag::N)) {
     program_counter_ = addr;
     cycle_ += addrval.page_crossed + 1;
@@ -483,30 +474,30 @@ void Cpu6502::BPL(AddressingMode mode) {
 
 void Cpu6502::RTS(AddressingMode mode) {
   program_counter_ = PopStack16() + 1;
-  DBGPADSINGLE("RTS");
+  NTLOGPADSINGLE("RTS");
 }
 
 void Cpu6502::NOP(AddressingMode mode) {
-  DBGPADSINGLE("NOP");
+  NTLOGPADSINGLE("NOP");
  }
 
 void Cpu6502::SEI(AddressingMode mode) {
   SetFlag(Flag::I, true);
-  DBGPADSINGLE("SEI");
+  NTLOGPADSINGLE("SEI");
  }
 
  void Cpu6502::SED(AddressingMode mode) {
   SetFlag(Flag::D, true);
-  DBGPADSINGLE("SED");
+  NTLOGPADSINGLE("SED");
  }
 
  void Cpu6502::PHP(AddressingMode mode) {
   PushStack(p_ | 0b0011'0000);  // B=0b11
-  DBGPADSINGLE("PHP");
+  NTLOGPADSINGLE("PHP");
  }
 
 void Cpu6502::PLA(AddressingMode mode) {
-  DBGPADSINGLE("PLA");
+  NTLOGPADSINGLE("PLA");
   a_ = PopStack();
   SetFlag(Flag::Z, a_ == 0);
   SetFlag(Flag::N, !Pos(a_));
@@ -518,7 +509,7 @@ void Cpu6502::AND(AddressingMode mode) {
   a_ &= addrval.val;
   SetFlag(Flag::Z, a_ == 0);
   SetFlag(Flag::N, !Pos(a_));
-  DBGPAD("AND %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("AND %s", AddrValString(addrval, mode).c_str());
 }
 
 void Cpu6502::CMP(AddressingMode mode) {
@@ -527,28 +518,28 @@ void Cpu6502::CMP(AddressingMode mode) {
   SetFlag(Flag::C, a_ >= addrval.val);
   SetFlag(Flag::Z, a_ == addrval.val);
   SetFlag(Flag::N, !Pos(a_ - addrval.val));
-  DBGPAD("CMP %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("CMP %s", AddrValString(addrval, mode).c_str());
 }
 
 void Cpu6502::CLD(AddressingMode mode) {
   SetFlag(Flag::D, false);
-  DBGPADSINGLE("CLD");
+  NTLOGPADSINGLE("CLD");
 }
 
 void Cpu6502::PHA(AddressingMode mode) {
   PushStack(a_);
-  DBGPADSINGLE("PHA");
+  NTLOGPADSINGLE("PHA");
 }
 
 void Cpu6502::PLP(AddressingMode mode) {
   SetPIgnoreB(PopStack());
-  DBGPADSINGLE("PLP");
+  NTLOGPADSINGLE("PLP");
 }
 
 void Cpu6502::BMI(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   uint16_t addr = addrval.addr;
-  DBGPAD("BMI %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("BMI %s", AddrValString(addrval, mode).c_str());
   if (GetFlag(Flag::N)) {
     program_counter_ = addr;
     cycle_ += addrval.page_crossed + 1;
@@ -561,12 +552,12 @@ void Cpu6502::ORA(AddressingMode mode) {
   a_ |= addrval.val;
   SetFlag(Flag::Z, a_ == 0);
   SetFlag(Flag::N, !Pos(a_));
-  DBGPAD("ORA %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("ORA %s", AddrValString(addrval, mode).c_str());
 }
 
 void Cpu6502::CLV(AddressingMode mode) {
   SetFlag(Flag::V, false);
-  DBGPADSINGLE("CLV");
+  NTLOGPADSINGLE("CLV");
 }
 
 void Cpu6502::EOR(AddressingMode mode) {
@@ -575,14 +566,14 @@ void Cpu6502::EOR(AddressingMode mode) {
   a_ ^= addrval.val;
   SetFlag(Flag::Z, a_ == 0);
   SetFlag(Flag::N, !Pos(a_));
-  DBGPAD("EOR %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("EOR %s", AddrValString(addrval, mode).c_str());
 }
 
 void Cpu6502::LDY(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   cycle_ += addrval.page_crossed;
   uint8_t val = addrval.val;
-  DBGPAD("LDY %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("LDY %s", AddrValString(addrval, mode).c_str());
   SetFlag(Flag::Z, val == 0);
   SetFlag(Flag::N, !Pos(val));
   y_ = val;
@@ -594,7 +585,7 @@ void Cpu6502::CPX(AddressingMode mode) {
   SetFlag(Flag::C, x_ >= addrval.val);
   SetFlag(Flag::Z, x_ == addrval.val);
   SetFlag(Flag::N, !Pos(x_ - addrval.val));
-  DBGPAD("CPX %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("CPX %s", AddrValString(addrval, mode).c_str());
 }
 
 void Cpu6502::CPY(AddressingMode mode) {
@@ -603,14 +594,14 @@ void Cpu6502::CPY(AddressingMode mode) {
   SetFlag(Flag::C, y_ >= addrval.val);
   SetFlag(Flag::Z, y_ == addrval.val);
   SetFlag(Flag::N, !Pos(y_ - addrval.val));
-  DBGPAD("CPY %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("CPY %s", AddrValString(addrval, mode).c_str());
 }
 
 void Cpu6502::SBC(AddressingMode mode, bool unofficial) {
   AddrVal addrval = NextAddrVal(mode, unofficial);
   uint8_t val = addrval.val;
   val = ~val;
-  DBGPAD("SBC %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("SBC %s", AddrValString(addrval, mode).c_str());
   uint16_t new_a = a_ + val + GetFlag(Flag::C);
   SetFlag(Flag::C, new_a > 0xFF);
   if (Pos(a_) && !Pos(addrval.val) && !Pos(new_a)) {
@@ -626,63 +617,63 @@ void Cpu6502::SBC(AddressingMode mode, bool unofficial) {
 }
 
 void Cpu6502::INX(AddressingMode mode) {
-  DBGPADSINGLE("INX");
+  NTLOGPADSINGLE("INX");
   x_ += 1;
   SetFlag(Flag::Z, x_ == 0);
   SetFlag(Flag::N, !Pos(x_));
 }
 
 void Cpu6502::INY(AddressingMode mode) {
-  DBGPADSINGLE("INY");
+  NTLOGPADSINGLE("INY");
   y_ += 1;
   SetFlag(Flag::Z, y_ == 0);
   SetFlag(Flag::N, !Pos(y_));
 }
 
 void Cpu6502::DEX(AddressingMode mode) {
-  DBGPADSINGLE("DEX");
+  NTLOGPADSINGLE("DEX");
   x_ -= 1;
   SetFlag(Flag::Z, x_ == 0);
   SetFlag(Flag::N, !Pos(x_));
 }
 
 void Cpu6502::DEY(AddressingMode mode) {
-  DBGPADSINGLE("DEY");
+  NTLOGPADSINGLE("DEY");
   y_ -= 1;
   SetFlag(Flag::Z, y_ == 0);
   SetFlag(Flag::N, !Pos(y_));
 }
 
 void Cpu6502::TAX(AddressingMode mode) {
-  DBGPADSINGLE("TAX");
+  NTLOGPADSINGLE("TAX");
   x_ = a_;
   SetFlag(Flag::Z, x_ == 0);
   SetFlag(Flag::N, !Pos(x_));
 }
 
 void Cpu6502::TAY(AddressingMode mode) {
-  DBGPADSINGLE("TAY");
+  NTLOGPADSINGLE("TAY");
   y_ = a_;
   SetFlag(Flag::Z, y_ == 0);
   SetFlag(Flag::N, !Pos(y_));
 }
 
 void Cpu6502::TXA(AddressingMode mode) {
-  DBGPADSINGLE("TXA");
+  NTLOGPADSINGLE("TXA");
   a_ = x_;
   SetFlag(Flag::Z, a_ == 0);
   SetFlag(Flag::N, !Pos(a_));
 }
 
 void Cpu6502::TYA(AddressingMode mode) {
-  DBGPADSINGLE("TYA");
+  NTLOGPADSINGLE("TYA");
   a_ = y_;
   SetFlag(Flag::Z, a_ == 0);
   SetFlag(Flag::N, !Pos(a_));
 }
 
 void Cpu6502::TSX(AddressingMode mode) {
-  DBGPADSINGLE("TSX");
+  NTLOGPADSINGLE("TSX");
   x_ = stack_pointer_;
   SetFlag(Flag::Z, x_ == 0);
   SetFlag(Flag::N, !Pos(x_));
@@ -690,13 +681,13 @@ void Cpu6502::TSX(AddressingMode mode) {
 
 void Cpu6502::TXS(AddressingMode mode) {
   // Weirdly enough this doesn't set flags.
-  DBGPADSINGLE("TXS");
+  NTLOGPADSINGLE("TXS");
   stack_pointer_ = x_;
 }
 
 void Cpu6502::LSR(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
-  DBGPAD("LSR %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("LSR %s", AddrValString(addrval, mode).c_str());
   // Accumulator needs to be set directly
   uint8_t result = 0;
   uint8_t initial_val = 0;
@@ -716,7 +707,7 @@ void Cpu6502::LSR(AddressingMode mode) {
 
 void Cpu6502::ASL(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
-  DBGPAD("ASL %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("ASL %s", AddrValString(addrval, mode).c_str());
   // Accumulator needs to be set directly
   uint8_t result = 0;
   uint8_t initial_val = 0;
@@ -736,7 +727,7 @@ void Cpu6502::ASL(AddressingMode mode) {
 
 void Cpu6502::ROR(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
-  DBGPAD("ROR %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("ROR %s", AddrValString(addrval, mode).c_str());
   // Accumulator needs to be set directly
   uint8_t result = 0;
   uint8_t initial_val = 0;
@@ -758,7 +749,7 @@ void Cpu6502::ROR(AddressingMode mode) {
 
 void Cpu6502::ROL(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
-  DBGPAD("ROL %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("ROL %s", AddrValString(addrval, mode).c_str());
   // Accumulator needs to be set directly
   uint8_t result = 0;
   uint8_t initial_val = 0;
@@ -781,14 +772,14 @@ void Cpu6502::ROL(AddressingMode mode) {
 void Cpu6502::STY(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   uint16_t addr = addrval.addr;
-  DBGPAD("STY %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("STY %s", AddrValString(addrval, mode).c_str());
   memory_view_->Set(addr, y_);
 }
 
 void Cpu6502::INC(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   uint16_t addr = addrval.addr;
-  DBGPAD("INC %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("INC %s", AddrValString(addrval, mode).c_str());
   uint8_t result = memory_view_->Get(addr) + 1;
   memory_view_->Set(addr, result);
   SetFlag(Flag::Z, result == 0);
@@ -798,7 +789,7 @@ void Cpu6502::INC(AddressingMode mode) {
 void Cpu6502::DEC(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   uint16_t addr = addrval.addr;
-  DBGPAD("DEC %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("DEC %s", AddrValString(addrval, mode).c_str());
   uint8_t result = memory_view_->Get(addr) - 1;
   memory_view_->Set(addr, result);
   SetFlag(Flag::Z, result == 0);
@@ -810,13 +801,13 @@ void Cpu6502::DEC(AddressingMode mode) {
 void Cpu6502::UN_NOP(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode, /*unoficial=*/true);
   cycle_ += addrval.page_crossed;
-  DBGPAD("NOP %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("NOP %s", AddrValString(addrval, mode).c_str());
 }
 
 void Cpu6502::UN_LAX(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode, /*unoficial=*/true);
   cycle_ += addrval.page_crossed;
-  DBGPAD("LAX %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("LAX %s", AddrValString(addrval, mode).c_str());
   // LDA then TAX. So just load into both.
   uint8_t val = addrval.val;
   SetFlag(Flag::Z, val == 0);
@@ -829,7 +820,7 @@ void Cpu6502::UN_SAX(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode, /*unofficial=*/true);
   uint16_t addr = addrval.addr;
   cycle_ += addrval.page_crossed;
-  DBGPAD("SAX %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("SAX %s", AddrValString(addrval, mode).c_str());
   memory_view_->Set(addr, a_ & x_);
 }
 
@@ -841,7 +832,7 @@ void Cpu6502::UN_DCP(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode, /*unofficial=*/true);
   uint16_t addr = addrval.addr;
   cycle_ += addrval.page_crossed;
-  DBGPAD("DCP %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("DCP %s", AddrValString(addrval, mode).c_str());
   // DEC then CMP the value.
   uint8_t result = memory_view_->Get(addr) - 1;
   memory_view_->Set(addr, result);
@@ -854,7 +845,7 @@ void Cpu6502::UN_ISB(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode, /*unofficial=*/true);
   uint16_t addr = addrval.addr;
   cycle_ += addrval.page_crossed;
-  DBGPAD("ISB %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("ISB %s", AddrValString(addrval, mode).c_str());
 
   // INC then SBC the value.
   uint8_t val = memory_view_->Get(addr) + 1;
@@ -878,7 +869,7 @@ void Cpu6502::UN_ISB(AddressingMode mode) {
 void Cpu6502::UN_SLO(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode, /*unofficial=*/true);
   cycle_ += addrval.page_crossed;
-  DBGPAD("SLO %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("SLO %s", AddrValString(addrval, mode).c_str());
   // ASL val then ORA it into A.
   uint8_t initial_val = addrval.val;
   uint8_t result = initial_val << 1;
@@ -893,7 +884,7 @@ void Cpu6502::UN_SLO(AddressingMode mode) {
 void Cpu6502::UN_RLA(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode, /*unofficial=*/true);
   cycle_ += addrval.page_crossed;
-  DBGPAD("RLA %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("RLA %s", AddrValString(addrval, mode).c_str());
   // ROL val then AND it into A.
   uint8_t initial_val = addrval.val;
   uint8_t result = initial_val << 1;
@@ -909,7 +900,7 @@ void Cpu6502::UN_RLA(AddressingMode mode) {
 void Cpu6502::UN_SRE(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode, /*unofficial=*/true);
   cycle_ += addrval.page_crossed;
-  DBGPAD("SRE %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("SRE %s", AddrValString(addrval, mode).c_str());
   // LSR val then EOR it into A.
   uint8_t initial_val = addrval.val;
   uint8_t result = initial_val >> 1;
@@ -924,7 +915,7 @@ void Cpu6502::UN_SRE(AddressingMode mode) {
 void Cpu6502::UN_RRA(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode, /*unofficial=*/true);
   cycle_ += addrval.page_crossed;
-  DBGPAD("RRA %s", AddrValString(addrval, mode).c_str());
+  NTLOGPAD("RRA %s", AddrValString(addrval, mode).c_str());
   // ROR val then ADC it into A.
   uint8_t initial_val = addrval.val;
   uint8_t result = initial_val >> 1;
@@ -970,19 +961,19 @@ uint16_t Cpu6502::NextAddr(AddressingMode mode, bool* page_crossed) {
 Cpu6502::AddrVal Cpu6502::NextAddrVal(AddressingMode mode, bool unofficial) {
   if (mode == AddressingMode::kImmediate) {
     uint8_t imm = NextImmediate();
-    if (unofficial) DBG("*"); else DBG(" ");
+    if (unofficial) { NTLOG("*"); } else { NTLOG(" "); }
     return {0, imm};
   } else if (mode == AddressingMode::kAccumulator) {
-    DBG("      "); if (unofficial) DBG("*"); else DBG(" ");
+    NTLOG("      "); if (unofficial) { NTLOG("*"); } else { NTLOG(" "); }
     return {0, a_};
   } else if (mode == AddressingMode::kNone) {
-    DBG("      "); if (unofficial) DBG("*"); else DBG(" ");
+    NTLOG("      "); if (unofficial) { NTLOG("*"); } else { NTLOG(" "); }
     return {0, a_};
   }
   AddrVal addrval;
   addrval.addr = NextAddr(mode, &addrval.page_crossed);
-  addrval.val = VAL(addrval.addr);
-  if (unofficial) DBG("*"); else DBG(" ");
+  addrval.val = memory_view_->Get(addrval.addr);
+  if (unofficial) { NTLOG("*"); } else { NTLOG(" "); }
   return addrval;
 }
 
@@ -1274,5 +1265,5 @@ void Cpu6502::BuildInstructionSet() {
   ADD_INSTR(0x7B, UN_RRA, AddressingMode::kAbsoluteY, 6); // a,Y
   ADD_INSTR(0x7F, UN_RRA, AddressingMode::kAbsoluteX, 6); // a,X
 
-  VDBG("Instruction set built.\n");
+  DBG("Instruction set built.\n");
 }

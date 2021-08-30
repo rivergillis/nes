@@ -4,17 +4,6 @@
 #include <iostream>
 #include <iomanip>
 
-namespace { 
-void DBG(const char* str, ...) {
-  #ifdef DEBUG
-  va_list arglist;
-  va_start(arglist, str);
-  vprintf(str, arglist);
-  va_end(arglist);
-  #endif
-}
-}
-
 Image::Image(int cols, int rows) {
   data_ = static_cast<uint8_t*>(std::malloc(cols * rows * sizeof(uint8_t)));
   cols_ = cols;
