@@ -169,6 +169,8 @@ class Cpu6502 {
 
     // 2kb of internal memory -- nestest wants this 0'd
     uint8_t internal_ram_[2048] = {};
+    // 0x4000-0x401F -- APU and I/O memory. Owned by the CPU since we need it for I/O too.
+    uint8_t apu_ram_[0x20] = {};
 
     std::unique_ptr<Ppu> ppu_;
 

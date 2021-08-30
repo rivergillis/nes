@@ -3,12 +3,14 @@
 #include "common.h"
 #include "mapper.h"
 
-MemoryView::MemoryView(uint8_t* system_ram, Ppu* ppu, Mapper* mapper) : 
-    system_ram_(system_ram), ppu_(ppu), mapper_(mapper) {}
+MemoryView::MemoryView(uint8_t* system_ram, uint8_t* apu_ram, Ppu* ppu, Mapper* mapper) : 
+    system_ram_(system_ram), apu_ram_(apu_ram), ppu_(ppu), mapper_(mapper) {}
 
 uint8_t MemoryView::Get(uint16_t addr) {
   if (addr < 0x2000) {
     return system_ram_[addr % 0x800];
+  } else if (addr >= 0x4000 && addr <= 0x401F) {
+    return apu_ram_[addr % 0x4000];
   } else {
     // TODO: Handle 0x2000 thru 0x401F
     return mapper_->Get(addr);
@@ -30,7 +32,9 @@ uint16_t MemoryView::Get16(uint16_t addr, bool page_wrap) {
 void MemoryView::Set(uint16_t addr, uint8_t val) {
   if (addr < 0x2000) {
     system_ram_[addr % 0x800] = val;
-  } else {
+  } else if (addr >= 0x4000 && addr <= 0x401F) {
+    apu_ram_[addr % 0x4000] = val;
+  } else { 
     // TODO: Handle 0x2000 thru 0x401F
     mapper_->Set(addr, val);
   }

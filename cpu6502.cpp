@@ -61,7 +61,11 @@ void Cpu6502::RunCycle() {
 
 void Cpu6502::Reset(const std::string& file_path) {
   LoadCartrtidgeFile(file_path);
-  memory_view_ = std::make_unique<MemoryView>(internal_ram_, ppu_.get(), mapper_.get());
+  // nestest wants APU ram FF'd. TODO: Do this in APU
+  for (int i = 0; i < 0x20; i++) {
+    apu_ram_[i] = 0xFF;
+  }
+  memory_view_ = std::make_unique<MemoryView>(internal_ram_, apu_ram_, ppu_.get(), mapper_.get());
   assert(ppu_);
   assert(mapper_);
   assert(memory_view_);
