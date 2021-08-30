@@ -1,9 +1,10 @@
 # nes
 
-Nintendo Entertainment System / Famicom emulator designed to run your NES cartridges that have been legally transferred to your PC using [any of the methods outlined here](https://www.retrogameboards.com/t/the-ripping-thread-how-to-build-your-own-legit-retro-rom-library/98).
+Cycle-accurate Nintendo Entertainment System / Famicom emulator designed to run your NES cartridges that have been legally transferred to your PC using [any of the methods outlined here](https://www.retrogameboards.com/t/the-ripping-thread-how-to-build-your-own-legit-retro-rom-library/98).
 
 ### Current Status
-Executes the first ~8000 instructions of `nestest` succesfully (PPU excluded).
+Supports all official and unofficial instructions. Passes nestest without PPU checks.
+Does not yet support graphics, input, or audio.
 
 ### Usage
 *TODO*
