@@ -833,9 +833,20 @@ void Cpu6502::UN_SBC(AddressingMode mode) {
   SBC(mode, /*unofficial=*/true);
 }
 
+
+// have
+// EA27  D3 45    *DCP ($45),Y = 0548 @ 0647 = EB  A:40 X:02 Y:FF P:64 SP:FB CYC:17314
+// EA29  EA        NOP                             A:40 X:02 Y:FF P:64 SP:FB CYC:17323
+// need
+// EA27  D3 45    *DCP ($45),Y = 0548 @ 0647 = EB  A:40 X:02 Y:FF P:64 SP:FB CYC:17314
+// EA29  EA        NOP                             A:40 X:02 Y:FF P:64 SP:FB CYC:17322
+// so need 1 less cycle...
+
+
 void Cpu6502::UN_DCP(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode, /*unofficial=*/true);
   uint16_t addr = addrval.addr;
+  cycle_ += addrval.page_crossed;
   DBGPAD("DCP %s", AddrValString(addrval, mode).c_str());
   // DEC then CMP the value.
   uint8_t result = memory_view_->Get(addr) - 1;
@@ -848,6 +859,7 @@ void Cpu6502::UN_DCP(AddressingMode mode) {
 void Cpu6502::UN_ISB(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode, /*unofficial=*/true);
   uint16_t addr = addrval.addr;
+  cycle_ += addrval.page_crossed;
   DBGPAD("ISB %s", AddrValString(addrval, mode).c_str());
 
   // INC then SBC the value.
@@ -867,6 +879,21 @@ void Cpu6502::UN_ISB(AddressingMode mode) {
   a_ = new_a;
   SetFlag(Flag::Z, a_ == 0);
   SetFlag(Flag::N, !Pos(a_));
+}
+
+void Cpu6502::UN_SLO(AddressingMode mode) {
+  AddrVal addrval = NextAddrVal(mode, /*unofficial=*/true);
+  cycle_ += addrval.page_crossed;
+  DBGPAD("SLO %s", AddrValString(addrval, mode).c_str());
+  // ASL val then ORA it into A.
+  uint8_t initial_val = addrval.val;
+  uint8_t result = initial_val << 1;
+  memory_view_->Set(addrval.addr, result);
+
+  a_ |= result;
+  SetFlag(Flag::C, Bit(7, initial_val));
+  SetFlag(Flag::Z, result == 0);
+  SetFlag(Flag::N, !Pos(result));
 }
 
 uint16_t Cpu6502::NextAddr(AddressingMode mode, bool* page_crossed) {
@@ -1163,17 +1190,24 @@ void Cpu6502::BuildInstructionSet() {
   ADD_INSTR(0xC3, UN_DCP, AddressingMode::kIndirectX, 8); // (d,x)
   ADD_INSTR(0xC7, UN_DCP, AddressingMode::kZeroPage, 5); // d
   ADD_INSTR(0xCF, UN_DCP, AddressingMode::kAbsolute, 6); // a
-  ADD_INSTR(0xD3, UN_DCP, AddressingMode::kIndirectY, 8); // (d),Y 
+  ADD_INSTR(0xD3, UN_DCP, AddressingMode::kIndirectY, 7); // (d),Y 
   ADD_INSTR(0xD7, UN_DCP, AddressingMode::kZeroPageX, 6); // d,X
-  ADD_INSTR(0xDB, UN_DCP, AddressingMode::kAbsoluteY, 7); // a,Y
-  ADD_INSTR(0xDF, UN_DCP, AddressingMode::kAbsoluteX, 7); // a,X
+  ADD_INSTR(0xDB, UN_DCP, AddressingMode::kAbsoluteY, 6); // a,Y
+  ADD_INSTR(0xDF, UN_DCP, AddressingMode::kAbsoluteX, 6); // a,X
   ADD_INSTR(0xE3, UN_ISB, AddressingMode::kIndirectX, 8); // (d,x)
   ADD_INSTR(0xE7, UN_ISB, AddressingMode::kZeroPage, 5); // d
   ADD_INSTR(0xEF, UN_ISB, AddressingMode::kAbsolute, 6); // a
-  ADD_INSTR(0xF3, UN_ISB, AddressingMode::kIndirectY, 8); // (d),Y 
+  ADD_INSTR(0xF3, UN_ISB, AddressingMode::kIndirectY, 7); // (d),Y 
   ADD_INSTR(0xF7, UN_ISB, AddressingMode::kZeroPageX, 6); // d,X
-  ADD_INSTR(0xFB, UN_ISB, AddressingMode::kAbsoluteY, 7); // a,Y
-  ADD_INSTR(0xFF, UN_ISB, AddressingMode::kAbsoluteX, 7); // a,X
+  ADD_INSTR(0xFB, UN_ISB, AddressingMode::kAbsoluteY, 6); // a,Y
+  ADD_INSTR(0xFF, UN_ISB, AddressingMode::kAbsoluteX, 6); // a,X
+  ADD_INSTR(0x03, UN_SLO, AddressingMode::kIndirectX, 8); // (d,x)
+  ADD_INSTR(0x07, UN_SLO, AddressingMode::kZeroPage, 5); // d
+  ADD_INSTR(0x0F, UN_SLO, AddressingMode::kAbsolute, 6); // a
+  ADD_INSTR(0x13, UN_SLO, AddressingMode::kIndirectY, 8); // (d),Y 
+  ADD_INSTR(0x17, UN_SLO, AddressingMode::kZeroPageX, 6); // d,X
+  ADD_INSTR(0x1B, UN_SLO, AddressingMode::kAbsoluteY, 7); // a,Y
+  ADD_INSTR(0x1F, UN_SLO, AddressingMode::kAbsoluteX, 7); // a,X
 
   VDBG("Instruction set built.\n");
 }

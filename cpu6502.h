@@ -150,6 +150,7 @@ class Cpu6502 {
     DEF_INSTR(UN_ADC);
     DEF_INSTR(UN_DCP);  // DEC then CMP
     DEF_INSTR(UN_ISB);  // INC then SBC, also called ISC
+    DEF_INSTR(UN_SLO);  // ASL then ORA
 
     // Instruction set keyed on opcode.
     struct Instruction {
