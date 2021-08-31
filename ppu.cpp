@@ -18,6 +18,16 @@ Ppu::~Ppu() {
   free(chr_);
 }
 
+void Ppu::CTRL(uint8_t val) {
+  base_nametable_addr_ = 0x2000 + (0x400 * (Bit(1, val) + Bit(0, val)));  // somehow this is X/Y
+  vram_increment_down_ = Bit(2, val);
+  sprite_pattern_table_addr_8x8_ = Bit(3, val) ? 0x1000 : 0x0000;
+  bg_pattern_table_addr_ = Bit(4, val) ? 0x1000 : 0x0000;
+  sprite_size_8x16_ = Bit(5, val);
+  master_ = Bit(6, val);
+  generate_nmi_ = Bit(7, val);
+}
+
 void Ppu::DbgChr() {
   for (int i = 0x0000; i < chr_size_; i += 0x10) {
     DBG("\nPPU[%03X]: ", i);

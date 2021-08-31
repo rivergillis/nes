@@ -14,6 +14,9 @@ NromMapper::NromMapper(Ppu* ppu, uint8_t* prg_rom, size_t prg_rom_size) {
   DBG("Created NROM mapper with %llu byte PRG_ROM and 8k PRG_RAM\n", static_cast<uint64_t>(prg_rom_size_));
 }
 
+// TODO: Read/write invalid PPU ports should affect the latch status...
+// https://wiki.nesdev.com/w/index.php?title=PPU_registers
+
 uint8_t NromMapper::Get(uint16_t addr) {
   if (addr < 0x2000) {
     throw std::runtime_error("Invalid read addr");  // internal RAM
@@ -63,6 +66,7 @@ void NromMapper::Set(uint16_t addr, uint8_t val) {
     uint16_t ppu_addr = 0x2000 + (addr % 8);  // get mirror of $2000-$2007
     switch (ppu_addr) {
       case 0x2000:  // PPUCTRL
+        ppu_->CTRL(val);
         break;
       case 0x2001:  // PPUMASK
         break;
