@@ -28,16 +28,19 @@ uint8_t NromMapper::Get(uint16_t addr) {
       case 0x2001:  // PPUMASK
         throw std::runtime_error("Invalid CPU->PPU addr -- cannot read PPUMASK.");
       case 0x2002:  // PPUSTATUS
+        throw std::runtime_error("unimplemented PPUSTATUS read");
         break;
       case 0x2003:  // OAMADDR
         throw std::runtime_error("Invalid CPU->PPU addr -- cannot read OAMADDR.");
       case 0x2004:  // OAMDATA
+        throw std::runtime_error("unimplemented OAMDATA read");
         break;
       case 0x2005:  // PPUSCROLL
         throw std::runtime_error("Invalid CPU->PPU addr -- cannot read PPUSCROLL.");
       case 0x2006:  // PPUADDR
         throw std::runtime_error("Invalid CPU->PPU addr -- cannot read PPUADDR.");
       case 0x2007:  // PPUDATA
+        throw std::runtime_error("unimplemented PPUDATA read");
         break;
       default:
         throw std::runtime_error("Invalid CPU->PPU addr -- default.");
@@ -69,18 +72,24 @@ void NromMapper::Set(uint16_t addr, uint8_t val) {
         ppu_->CTRL(val);
         break;
       case 0x2001:  // PPUMASK
+        throw std::runtime_error("unimplemented PPUMASK write");
         break;
       case 0x2002:  // PPUSTATUS
         throw std::runtime_error("Invalid CPU->PPU addr -- cannot write PPUSTATUS.");
       case 0x2003:  // OAMADDR
+        throw std::runtime_error("unimplemented OAMDDR write");
         break;
       case 0x2004:  // OAMDATA
+        throw std::runtime_error("unimplemented OAMDATA write");
         break;
       case 0x2005:  // PPUSCROLL
+        throw std::runtime_error("unimplemented PPUSCROLL write");
         break;
       case 0x2006:  // PPUADDR
+        throw std::runtime_error("unimplemented PPUADDR write");
         break;
       case 0x2007:  // PPUDATA
+        throw std::runtime_error("unimplemented PPUDATA write");
         break;
       default:
         throw std::runtime_error("Invalid PPU addr -- default.");

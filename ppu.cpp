@@ -19,7 +19,7 @@ Ppu::~Ppu() {
 }
 
 void Ppu::CTRL(uint8_t val) {
-  base_nametable_addr_ = 0x2000 + (0x400 * (Bit(1, val) + Bit(0, val)));  // somehow this is X/Y
+  base_nametable_addr_ = 0x2000 + (0x400 * (Bit(1, val) + Bit(0, val)));  // somehow this is X/Y's MSB
   vram_increment_down_ = Bit(2, val);
   sprite_pattern_table_addr_8x8_ = Bit(3, val) ? 0x1000 : 0x0000;
   bg_pattern_table_addr_ = Bit(4, val) ? 0x1000 : 0x0000;
