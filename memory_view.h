@@ -2,7 +2,6 @@
 #define MEMORY_VIEW_H_
 
 #include "mapper.h"
-#include "ppu.h"
 #include "common.h"
 
 // Provides access to all system memory based on references
@@ -11,9 +10,8 @@
 
 class MemoryView {
   public:
-    // TODO: Add other components like PPU and APU
     // TODO: move the apu_ram view into an APU class
-    MemoryView(uint8_t* internal_ram, uint8_t* apu_ram, Ppu* ppu, Mapper* mapper); 
+    MemoryView(uint8_t* internal_ram, uint8_t* apu_ram, Mapper* mapper); 
 
     uint8_t Get(uint16_t addr);
     uint16_t Get16(uint16_t addr, bool page_wrap = false);
@@ -22,7 +20,6 @@ class MemoryView {
   private:
     uint8_t* system_ram_; // CPU internal RAM
     uint8_t* apu_ram_;
-    Ppu* ppu_;
     Mapper* mapper_;
 };
 

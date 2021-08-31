@@ -2,7 +2,8 @@
 
 #include "mapper_id.h"
 
-NromMapper::NromMapper(uint8_t* prg_rom, size_t prg_rom_size) {
+NromMapper::NromMapper(Ppu* ppu, uint8_t* prg_rom, size_t prg_rom_size) {
+  ppu_ = ppu;
   mapper_id_ = MapperId::kNrom;
   assert(prg_rom_size == 0x4000 || prg_rom_size == 0x8000);
   prg_rom_size_ = prg_rom_size;
@@ -14,8 +15,13 @@ NromMapper::NromMapper(uint8_t* prg_rom, size_t prg_rom_size) {
 }
 
 uint8_t NromMapper::Get(uint16_t addr) {
-  if (addr < 0x6000) {
-    throw std::runtime_error("Invalid read addr");
+  if (addr < 0x2000) {
+    throw std::runtime_error("Invalid read addr");  // internal RAM
+  } else if (addr < 0x4000) {
+    uint16_t ppu_addr = 0x2000 + (addr % 8);  // get mirror of $2000-$2007
+    // TODO: ppu
+  } else if (addr < 0x6000) {
+    throw std::runtime_error("Invalid read addr");  // Battery Backed Save or Work RAM
   } else if (addr < 0x8000) {
     // I think providing 8k ram here is wrong, but it should be fine...
     return prg_ram_[addr - 0x6000];
@@ -32,7 +38,14 @@ uint8_t NromMapper::Get(uint16_t addr) {
 }
 
 void NromMapper::Set(uint16_t addr, uint8_t val) {
-  if (addr < 0x6000 || addr >= 0x8000) {
+  if (addr < 0x2000) {
+    throw std::runtime_error("Invalid write addr");  // internal RAM
+  } else if (addr < 0x4000) {
+    uint16_t ppu_addr = 0x2000 + (addr % 8);  // get mirror of $2000-$2007
+    // TODO: ppu
+  } else if (addr == 0x4014) {
+    throw std::runtime_error("UNIMPLEMENTED OAM DMA (write $4014");
+  } else if (addr < 0x6000 || addr >= 0x8000) {
     throw std::runtime_error("Invalid write addr");
   } 
   prg_ram_[addr - 0x6000] = val;

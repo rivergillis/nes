@@ -174,7 +174,7 @@ class Cpu6502 {
 
     std::unique_ptr<Ppu> ppu_;
 
-    // Todo pass ptr to this and internal ram into a MemoryView class
+    // Todo pass ptr to this and internal ram into a MemoryView class. NOTE: This needs to come after ppu_
     std::unique_ptr<Mapper> mapper_;
 
     // NOTE: This needs to be last

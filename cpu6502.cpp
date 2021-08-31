@@ -56,7 +56,7 @@ void Cpu6502::Reset(const std::string& file_path) {
   for (int i = 0; i < 0x20; i++) {
     apu_ram_[i] = 0xFF;
   }
-  memory_view_ = std::make_unique<MemoryView>(internal_ram_, apu_ram_, ppu_.get(), mapper_.get());
+  memory_view_ = std::make_unique<MemoryView>(internal_ram_, apu_ram_, mapper_.get());
   assert(ppu_);
   assert(mapper_);
   assert(memory_view_);
@@ -159,7 +159,7 @@ void Cpu6502::LoadNes1File(std::vector<uint8_t> bytes) {
     ppu_ = std::make_unique<Ppu>(nullptr, 0);
   }
 
-  mapper_ = std::make_unique<NromMapper>(bytes.data() + 16, prg_rom_size);
+  mapper_ = std::make_unique<NromMapper>(ppu_.get(), bytes.data() + 16, prg_rom_size);
 }
 
 bool Cpu6502::GetFlag(Cpu6502::Flag flag) {
