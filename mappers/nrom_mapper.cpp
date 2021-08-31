@@ -19,7 +19,26 @@ uint8_t NromMapper::Get(uint16_t addr) {
     throw std::runtime_error("Invalid read addr");  // internal RAM
   } else if (addr < 0x4000) {
     uint16_t ppu_addr = 0x2000 + (addr % 8);  // get mirror of $2000-$2007
-    // TODO: ppu
+    switch (ppu_addr) {
+      case 0x2000:  // PPUCTRL
+        throw std::runtime_error("Invalid CPU->PPU addr -- cannot read PPUCTRL.");
+      case 0x2001:  // PPUMASK
+        throw std::runtime_error("Invalid CPU->PPU addr -- cannot read PPUMASK.");
+      case 0x2002:  // PPUSTATUS
+        break;
+      case 0x2003:  // OAMADDR
+        throw std::runtime_error("Invalid CPU->PPU addr -- cannot read OAMADDR.");
+      case 0x2004:  // OAMDATA
+        break;
+      case 0x2005:  // PPUSCROLL
+        throw std::runtime_error("Invalid CPU->PPU addr -- cannot read PPUSCROLL.");
+      case 0x2006:  // PPUADDR
+        throw std::runtime_error("Invalid CPU->PPU addr -- cannot read PPUADDR.");
+      case 0x2007:  // PPUDATA
+        break;
+      default:
+        throw std::runtime_error("Invalid CPU->PPU addr -- default.");
+    }
   } else if (addr < 0x6000) {
     throw std::runtime_error("Invalid read addr");  // Battery Backed Save or Work RAM
   } else if (addr < 0x8000) {
@@ -42,8 +61,27 @@ void NromMapper::Set(uint16_t addr, uint8_t val) {
     throw std::runtime_error("Invalid write addr");  // internal RAM
   } else if (addr < 0x4000) {
     uint16_t ppu_addr = 0x2000 + (addr % 8);  // get mirror of $2000-$2007
-    // TODO: ppu
-  } else if (addr == 0x4014) {
+    switch (ppu_addr) {
+      case 0x2000:  // PPUCTRL
+        break;
+      case 0x2001:  // PPUMASK
+        break;
+      case 0x2002:  // PPUSTATUS
+        throw std::runtime_error("Invalid CPU->PPU addr -- cannot write PPUSTATUS.");
+      case 0x2003:  // OAMADDR
+        break;
+      case 0x2004:  // OAMDATA
+        break;
+      case 0x2005:  // PPUSCROLL
+        break;
+      case 0x2006:  // PPUADDR
+        break;
+      case 0x2007:  // PPUDATA
+        break;
+      default:
+        throw std::runtime_error("Invalid PPU addr -- default.");
+    }
+  } else if (addr == 0x4014) {  // OAMDMA
     throw std::runtime_error("UNIMPLEMENTED OAM DMA (write $4014");
   } else if (addr < 0x6000 || addr >= 0x8000) {
     throw std::runtime_error("Invalid write addr");
