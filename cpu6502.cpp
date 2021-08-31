@@ -1268,5 +1268,5 @@ void Cpu6502::BuildInstructionSet() {
   ADD_INSTR(0x7B, UN_RRA, AddressingMode::kAbsoluteY, 6); // a,Y
   ADD_INSTR(0x7F, UN_RRA, AddressingMode::kAbsoluteX, 6); // a,X
 
-  DBG("Instruction set built.\n");
+  DBG("Instruction set built -- contains %llu instructions.\n", static_cast<uint64_t>(instructions_.size()));
 }

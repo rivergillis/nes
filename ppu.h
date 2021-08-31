@@ -18,6 +18,16 @@ class Ppu {
     uint8_t* chr_;  // CHR_ROM or CHR_RAM
     size_t chr_size_;
 
+    uint8_t nametable_ram_[2048] = {}; // 2kB of VRAM
+    uint8_t palette_ram_[32] = {};
+    uint8_t oam_[256] = {};
 };
+
+// 0x0000 - 0x1FFF is pattern memory (CHR). Usually mapper can bank this.
+// 0x2000 - 0x2FFF is nametable memory (VRAM)
+//   0x2000 - 0x27FF (size 0x800) then mirrored at 0x2800 - 0x2FFF
+// 0x3000 - 0x3EFF is a mirror of 0x2000 - 0x2EFF (size 0xF00)
+// 0x3F00 - 0x3F1F is pallete memory
+// 0x32F0 - 0x3FFF are mirros of 0x3F00 - 0x3F1F
 
 #endif // PPU_H_
