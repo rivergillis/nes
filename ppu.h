@@ -15,6 +15,9 @@ class Ppu {
     void SetCTRL(uint8_t val);
     void SetMASK(uint8_t val);
     uint8_t GetSTATUS();
+    void SetOAMADDR(uint8_t val);
+    uint8_t GetOAMDATA();
+    void SetOAMDATA(uint8_t val);
   
     void DbgChr();
 
@@ -31,6 +34,7 @@ class Ppu {
     uint8_t ppuctrl_ = 0;
     uint8_t ppumask_ = 0;
     uint8_t ppustatus_ = 0;
+    uint8_t oamaddr_ = 0;
 };
 
 // 0x0000 - 0x1FFF is pattern memory (CHR). Usually mapper can bank this.

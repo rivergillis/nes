@@ -76,7 +76,7 @@ void NromMapper::Set(uint16_t addr, uint8_t val) {
       case 0x2002:  // PPUSTATUS
         throw std::runtime_error("Invalid CPU->PPU addr -- cannot write PPUSTATUS.");
       case 0x2003:  // OAMADDR
-        throw std::runtime_error("unimplemented OAMDDR write");
+        ppu_->SetOAMADDR(val);
         break;
       case 0x2004:  // OAMDATA
         throw std::runtime_error("unimplemented OAMDATA write");
