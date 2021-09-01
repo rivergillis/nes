@@ -32,7 +32,7 @@ uint8_t NromMapper::Get(uint16_t addr) {
       case 0x2003:  // OAMADDR
         throw std::runtime_error("Invalid CPU->PPU addr -- cannot read OAMADDR.");
       case 0x2004:  // OAMDATA
-        throw std::runtime_error("unimplemented OAMDATA read");
+        return ppu_->GetOAMDATA();
         break;
       case 0x2005:  // PPUSCROLL
         throw std::runtime_error("Invalid CPU->PPU addr -- cannot read PPUSCROLL.");
@@ -79,10 +79,10 @@ void NromMapper::Set(uint16_t addr, uint8_t val) {
         ppu_->SetOAMADDR(val);
         break;
       case 0x2004:  // OAMDATA
-        throw std::runtime_error("unimplemented OAMDATA write");
+        ppu_->SetOAMDATA(val);
         break;
       case 0x2005:  // PPUSCROLL
-        throw std::runtime_error("unimplemented PPUSCROLL write");
+        ppu_->SetPPUSCROLL(val);
         break;
       case 0x2006:  // PPUADDR
         throw std::runtime_error("unimplemented PPUADDR write");

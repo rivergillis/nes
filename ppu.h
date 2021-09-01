@@ -18,6 +18,10 @@ class Ppu {
     void SetOAMADDR(uint8_t val);
     uint8_t GetOAMDATA();
     void SetOAMDATA(uint8_t val);
+    // Write twice. Horizontal then vertical.
+    void SetPPUSCROLL(uint8_t val);
+    // Write twice. MSB then LSB.
+    void SetPPUADDR(uint8_t val);
   
     void DbgChr();
 
@@ -31,10 +35,18 @@ class Ppu {
     uint8_t palette_ram_[32] = {};
     uint8_t oam_[256] = {};
 
+    // TODO: Emulate the latch.
+
+    bool next_ppuscroll_write_is_x_ = true; // otherwise y
+    bool next_ppuaddr_write_is_msb_ = true; // otherwise lsb
+
     uint8_t ppuctrl_ = 0;
     uint8_t ppumask_ = 0;
     uint8_t ppustatus_ = 0;
     uint8_t oamaddr_ = 0;
+    uint8_t ppuscroll_x_ = 0;
+    uint8_t ppuscroll_y_ = 0;
+    uint16_t ppuaddr_ = 0;
 };
 
 // 0x0000 - 0x1FFF is pattern memory (CHR). Usually mapper can bank this.

@@ -61,6 +61,28 @@ void Ppu::SetOAMDATA(uint8_t val) {
   oam_[oamaddr_++] = val;
 }
 
+void Ppu::SetPPUSCROLL(uint8_t val) {
+  if (next_ppuscroll_write_is_x_) {
+    ppuscroll_x_ = val;
+  } else {
+    ppuscroll_y_ = val;
+  }
+  next_ppuscroll_write_is_x_ = !next_ppuscroll_write_is_x_;
+  SetPpuStatusLSBits(val);
+}
+
+void Ppu::SetPPUADDR(uint8_t val) {
+  if (next_ppuaddr_write_is_msb_) {
+    ppuaddr_ &= 0x00FF;
+    ppuaddr_ |= (static_cast<uint16_t>(val) << 8);
+  } else {
+    ppuaddr_ &= 0xFF00;
+    ppuaddr_ |= val;
+  }
+  next_ppuaddr_write_is_msb_ = !next_ppuaddr_write_is_msb_;
+  SetPpuStatusLSBits(val);
+}
+
 void Ppu::DbgChr() {
   for (int i = 0x0000; i < chr_size_; i += 0x10) {
     DBG("\nPPU[%03X]: ", i);
