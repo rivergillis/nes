@@ -28,8 +28,7 @@ uint8_t NromMapper::Get(uint16_t addr) {
       case 0x2001:  // PPUMASK
         throw std::runtime_error("Invalid CPU->PPU addr -- cannot read PPUMASK.");
       case 0x2002:  // PPUSTATUS
-        throw std::runtime_error("unimplemented PPUSTATUS read");
-        break;
+        return ppu_->GetSTATUS();
       case 0x2003:  // OAMADDR
         throw std::runtime_error("Invalid CPU->PPU addr -- cannot read OAMADDR.");
       case 0x2004:  // OAMDATA
@@ -69,10 +68,10 @@ void NromMapper::Set(uint16_t addr, uint8_t val) {
     uint16_t ppu_addr = 0x2000 + (addr % 8);  // get mirror of $2000-$2007
     switch (ppu_addr) {
       case 0x2000:  // PPUCTRL
-        ppu_->CTRL(val);
+        ppu_->SetCTRL(val);
         break;
       case 0x2001:  // PPUMASK
-        throw std::runtime_error("unimplemented PPUMASK write");
+        ppu_->SetMASK(val);
         break;
       case 0x2002:  // PPUSTATUS
         throw std::runtime_error("Invalid CPU->PPU addr -- cannot write PPUSTATUS.");

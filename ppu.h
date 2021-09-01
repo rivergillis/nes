@@ -12,12 +12,15 @@ class Ppu {
     Ppu(uint8_t* chr, size_t chr_size);
     ~Ppu();
 
-    // PPUCTRL
-    void CTRL(uint8_t val);
+    void SetCTRL(uint8_t val);
+    void SetMASK(uint8_t val);
+    uint8_t GetSTATUS();
   
     void DbgChr();
 
   private:
+    void SetPpuStatusLSBits(uint8_t val); // sets bits 0-4 of ppustatus
+
     uint8_t* chr_;  // CHR_ROM or CHR_RAM
     size_t chr_size_;
 
@@ -25,14 +28,9 @@ class Ppu {
     uint8_t palette_ram_[32] = {};
     uint8_t oam_[256] = {};
 
-    // PPUCTRL registers
-    uint16_t base_nametable_addr_ = 0;
-    bool vram_increment_down_ = false;
-    uint16_t sprite_pattern_table_addr_8x8_ = 0;
-    uint16_t bg_pattern_table_addr_ = 0;
-    bool sprite_size_8x16_ = false;
-    bool master_ = false;
-    bool generate_nmi_ = false;
+    uint8_t ppuctrl_ = 0;
+    uint8_t ppumask_ = 0;
+    uint8_t ppustatus_ = 0;
 };
 
 // 0x0000 - 0x1FFF is pattern memory (CHR). Usually mapper can bank this.
@@ -41,5 +39,14 @@ class Ppu {
 // 0x3000 - 0x3EFF is a mirror of 0x2000 - 0x2EFF (size 0xF00)
 // 0x3F00 - 0x3F1F is pallete memory
 // 0x32F0 - 0x3FFF are mirros of 0x3F00 - 0x3F1F
+
+// ppuctrl
+  // base_nametable_addr_ = 0x2000 + (0x400 * (Bit(1, val) + Bit(0, val)));  // somehow this is X/Y's MSB
+  // vram_increment_down_ = Bit(2, val);
+  // sprite_pattern_table_addr_8x8_ = Bit(3, val) ? 0x1000 : 0x0000;
+  // bg_pattern_table_addr_ = Bit(4, val) ? 0x1000 : 0x0000;
+  // sprite_size_8x16_ = Bit(5, val);
+  // master_ = Bit(6, val);
+  // generate_nmi_ = Bit(7, val);
 
 #endif // PPU_H_

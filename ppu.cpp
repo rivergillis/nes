@@ -18,14 +18,27 @@ Ppu::~Ppu() {
   free(chr_);
 }
 
-void Ppu::CTRL(uint8_t val) {
-  base_nametable_addr_ = 0x2000 + (0x400 * (Bit(1, val) + Bit(0, val)));  // somehow this is X/Y's MSB
-  vram_increment_down_ = Bit(2, val);
-  sprite_pattern_table_addr_8x8_ = Bit(3, val) ? 0x1000 : 0x0000;
-  bg_pattern_table_addr_ = Bit(4, val) ? 0x1000 : 0x0000;
-  sprite_size_8x16_ = Bit(5, val);
-  master_ = Bit(6, val);
-  generate_nmi_ = Bit(7, val);
+void Ppu::SetPpuStatusLSBits(uint8_t val) {
+  for (int i = 0; i <= 4; ++i) {
+    SetBit(i, ppustatus_, Bit(i, val));
+  }
+}
+
+void Ppu::SetCTRL(uint8_t val) {
+  ppuctrl_ = val;
+  SetPpuStatusLSBits(val);
+}
+
+void Ppu::SetMASK(uint8_t val) {
+  ppumask_= val;
+  SetPpuStatusLSBits(val);
+}
+
+uint8_t Ppu::GetSTATUS() {
+  uint8_t res = ppustatus_;
+  SetBit(7, ppustatus_, 0); // reading clears bit 7 after read.
+  // TODO: Set bits 5, 6, 7. Potentially do this elsewhere.
+  return res;
 }
 
 void Ppu::DbgChr() {
