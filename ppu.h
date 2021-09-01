@@ -12,6 +12,9 @@ class Ppu {
     Ppu(uint8_t* chr, size_t chr_size);
     ~Ppu();
 
+    uint8_t GetMMAP(uint16_t addr);
+    void SetMMAP(uint16_t addr, uint8_t val);
+
     void SetCTRL(uint8_t val);
     void SetMASK(uint8_t val);
     uint8_t GetSTATUS();
@@ -22,6 +25,8 @@ class Ppu {
     void SetPPUSCROLL(uint8_t val);
     // Write twice. MSB then LSB.
     void SetPPUADDR(uint8_t val);
+    void SetPPUDATA(uint8_t val);
+    uint8_t GetPPUDATA();
   
     void DbgChr();
 

@@ -18,6 +18,43 @@ Ppu::~Ppu() {
   free(chr_);
 }
 
+
+uint8_t Ppu::GetMMAP(uint16_t addr) {
+  if (addr < 0x2000) {
+    if (addr >= chr_size_) {
+      throw std::runtime_error("PPU[addr] access outside of CHR. Is this legal?");
+    }
+    return chr_[addr];
+  } else if (addr < 0x3000) {
+    return nametable_ram_[addr - 0x2000];
+  } else if (addr < 0x3F00) {
+    return nametable_ram_[addr - 0x3000];
+  } else if (addr < 0x3F20) {
+    return palette_ram_[addr - 0x3F00];
+  } else if (addr < 0x4000) {
+    return palette_ram_[0x3F00 + (addr % 0x20)];
+  }
+  throw std::runtime_error("PPU[addr] outside memory map range.");
+}
+
+void Ppu::SetMMAP(uint16_t addr, uint8_t val) {
+  if (addr < 0x2000) {
+    if (addr >= chr_size_) {
+      throw std::runtime_error("PPU[addr] access outside of CHR. Is this legal?");
+    }
+    chr_[addr] = val;
+  } else if (addr < 0x3000) {
+    nametable_ram_[addr - 0x2000] = val;
+  } else if (addr < 0x3F00) {
+    nametable_ram_[addr - 0x3000] = val;
+  } else if (addr < 0x3F20) {
+    palette_ram_[addr - 0x3F00] = val;
+  } else if (addr < 0x4000) {
+    palette_ram_[0x3F00 + (addr % 0x20)] = val;
+  }
+  throw std::runtime_error("PPU[addr] outside memory map range.");
+}
+
 void Ppu::SetPpuStatusLSBits(uint8_t val) {
   for (int i = 0; i <= 4; ++i) {
     SetBit(i, ppustatus_, Bit(i, val));
@@ -81,6 +118,19 @@ void Ppu::SetPPUADDR(uint8_t val) {
   }
   next_ppuaddr_write_is_msb_ = !next_ppuaddr_write_is_msb_;
   SetPpuStatusLSBits(val);
+}
+
+void Ppu::SetPPUDATA(uint8_t val) {
+  SetMMAP(ppuaddr_, val);
+  uint8_t inc_amt = Bit(2, GetMMAP(0x2000));
+  ppuaddr_ += inc_amt;
+}
+
+uint8_t Ppu::GetPPUDATA() {
+  uint8_t res = GetMMAP(ppuaddr_);
+  uint8_t inc_amt = Bit(2, GetMMAP(0x2000));
+  ppuaddr_ += inc_amt;
+  return res;
 }
 
 void Ppu::DbgChr() {
