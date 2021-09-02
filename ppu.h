@@ -27,6 +27,9 @@ class Ppu {
     void SetPPUADDR(uint8_t val);
     void SetPPUDATA(uint8_t val);
     uint8_t GetPPUDATA();
+    // PROBLEM: OAMDMA needs to access ANY part of the CPU's accessible ram.
+    // MemoryView can do that...
+    // void SetOAMDMA(uint8_t val);
   
     void DbgChr();
 

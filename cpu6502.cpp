@@ -7,7 +7,6 @@
 #include "mappers/nrom_mapper.h"
 #include "mapper_id.h"
 #include "ppu.h"
-#include "memory_view.h"
 
 namespace { 
 
@@ -37,7 +36,7 @@ void Cpu6502::RunCycle() {
         a_, x_, y_, p_, stack_pointer_);
       uint64_t prev_cycle = cycle_;
       #endif
-  uint8_t opcode = memory_view_->Get(program_counter_);
+  uint8_t opcode = mapper_->Get(program_counter_);
       #ifdef NESTEST
       NTLOG("%04X  %02X ", program_counter_, opcode);
       #endif
@@ -56,10 +55,8 @@ void Cpu6502::Reset(const std::string& file_path) {
   for (int i = 0; i < 0x20; i++) {
     apu_ram_[i] = 0xFF;
   }
-  memory_view_ = std::make_unique<MemoryView>(internal_ram_, apu_ram_, mapper_.get());
   assert(ppu_);
   assert(mapper_);
-  assert(memory_view_);
   // DbgMem();
 
   // http://webcache.googleusercontent.com/search?q=cache:knntPlSpFnQJ:forums.nesdev.com/viewtopic.php%3Ff%3D3%26t%3D14231+&cd=4&hl=en&ct=clnk&gl=us
@@ -77,7 +74,7 @@ void Cpu6502::Reset(const std::string& file_path) {
   if (file_path == "/Users/river/code/nes/roms/nestest.nes") {
     program_counter_ = 0xC000;
   } else {
-    program_counter_ =  memory_view_->Get16(0xFFFC);
+    program_counter_ =  mapper_->Get16(0xFFFC);
   }
 
   // not realistic -- programs should set these
@@ -159,7 +156,7 @@ void Cpu6502::LoadNes1File(std::vector<uint8_t> bytes) {
     ppu_ = std::make_unique<Ppu>(nullptr, 0);
   }
 
-  mapper_ = std::make_unique<NromMapper>(ppu_.get(), bytes.data() + 16, prg_rom_size);
+  mapper_ = std::make_unique<NromMapper>(internal_ram_, ppu_.get(), apu_ram_, bytes.data() + 16, prg_rom_size);
 }
 
 bool Cpu6502::GetFlag(Cpu6502::Flag flag) {
@@ -190,42 +187,42 @@ void Cpu6502::SetPIgnoreB(uint8_t new_p) {
 }
 
 uint8_t Cpu6502::NextImmediate() {
-  uint8_t val = memory_view_->Get(program_counter_++);
+  uint8_t val = mapper_->Get(program_counter_++);
   NTLOG("%02X    ", val);
   return val;
 }
 uint16_t Cpu6502::NextZeroPage() {
-  uint16_t addr = memory_view_->Get(program_counter_++);
+  uint16_t addr = mapper_->Get(program_counter_++);
   NTLOG("%02X    ", static_cast<uint8_t>(addr));
   return addr;
 }
 uint16_t Cpu6502::NextZeroPageX() {
-  uint16_t addr = memory_view_->Get(program_counter_++);
+  uint16_t addr = mapper_->Get(program_counter_++);
   NTLOG("%02X    ", static_cast<uint8_t>(addr));
   addr = (addr + x_) % 0x100;  // Add X to LSB of ZP
   return addr;
 }
 uint16_t Cpu6502::NextZeroPageY() {
-  uint16_t addr = memory_view_->Get(program_counter_++);
+  uint16_t addr = mapper_->Get(program_counter_++);
   NTLOG("%02X    ", static_cast<uint8_t>(addr));
   addr = (addr + y_) % 0x100;  // Add Y to LSB of ZP
   return addr;
 }
 uint16_t Cpu6502::NextAbsolute() {
-  uint16_t addr = memory_view_->Get16(program_counter_);
+  uint16_t addr = mapper_->Get16(program_counter_);
   NTLOG("%02X %02X ", static_cast<uint8_t>(addr), static_cast<uint8_t>(addr >> 8)); // low first
   program_counter_ += 2;
   return addr;
 }
 uint16_t Cpu6502::NextAbsoluteX(bool* page_crossed) {
-  uint16_t addr = memory_view_->Get16(program_counter_);
+  uint16_t addr = mapper_->Get16(program_counter_);
   NTLOG("%02X %02X ", static_cast<uint8_t>(addr), static_cast<uint8_t>(addr >> 8));
   program_counter_ += 2;
   *page_crossed = CrossedPage(addr, addr + x_);
   return addr + x_;
 }
 uint16_t Cpu6502::NextAbsoluteY(bool* page_crossed) {
-  uint16_t addr = memory_view_->Get16(program_counter_);
+  uint16_t addr = mapper_->Get16(program_counter_);
   NTLOG("%02X %02X ", static_cast<uint8_t>(addr), static_cast<uint8_t>(addr >> 8));
   program_counter_ += 2;
   *page_crossed = CrossedPage(addr, addr + y_);
@@ -233,30 +230,30 @@ uint16_t Cpu6502::NextAbsoluteY(bool* page_crossed) {
 }
 uint16_t Cpu6502::NextIndirectX() {
   // Get ZP, add X_ to LSB, then read full addr
-  uint16_t zero_addr = memory_view_->Get(program_counter_++);
+  uint16_t zero_addr = mapper_->Get(program_counter_++);
   NTLOG("%02X    ", static_cast<uint8_t>(zero_addr));
   zero_addr = (zero_addr + x_) % 0x100;
-  return memory_view_->Get16(zero_addr, /*page_wrap=*/true);
+  return mapper_->Get16(zero_addr, /*page_wrap=*/true);
 }
 uint16_t Cpu6502::NextIndirectY(bool* page_crossed) {
   // get ZP addr, then read full addr from it and add Y
-  uint16_t zero_addr = memory_view_->Get(program_counter_++);
+  uint16_t zero_addr = mapper_->Get(program_counter_++);
   NTLOG("%02X    ", static_cast<uint8_t>(zero_addr));
-  uint16_t addr = memory_view_->Get16(zero_addr, /*page_wrap=*/true);
+  uint16_t addr = mapper_->Get16(zero_addr, /*page_wrap=*/true);
   *page_crossed = CrossedPage(addr, addr + y_);
   return addr + y_;
 }
 
 uint16_t Cpu6502::NextAbsoluteIndirect() {
-  uint16_t indirect = memory_view_->Get16(program_counter_);
+  uint16_t indirect = mapper_->Get16(program_counter_);
   NTLOG("%02X %02X ", static_cast<uint8_t>(indirect), static_cast<uint8_t>(indirect >> 8));
   program_counter_ += 2;
 
-  return memory_view_->Get16(indirect, /*page_wrap=*/true);
+  return mapper_->Get16(indirect, /*page_wrap=*/true);
 }
 
 uint16_t Cpu6502::NextRelativeAddr(bool* page_crossed) {
-  uint8_t offset_uint = memory_view_->Get(program_counter_++);
+  uint8_t offset_uint = mapper_->Get(program_counter_++);
   NTLOG("%02X    ", static_cast<uint8_t>(offset_uint));
   // https://stackoverflow.com/questions/14623266/why-cant-i-reinterpret-cast-uint-to-int
   int8_t tmp;
@@ -268,7 +265,7 @@ uint16_t Cpu6502::NextRelativeAddr(bool* page_crossed) {
 }
 
 void Cpu6502::PushStack(uint8_t val) {
-  memory_view_->Set(StackAddr(stack_pointer_--), val);
+  mapper_->Set(StackAddr(stack_pointer_--), val);
 }
 void Cpu6502::PushStack16(uint16_t val) {
   // Store MSB then LSB so that we can read back little-endian.
@@ -276,7 +273,7 @@ void Cpu6502::PushStack16(uint16_t val) {
   PushStack(static_cast<uint8_t>(val));
 }
 uint8_t Cpu6502::PopStack() {
-  return memory_view_->Get(StackAddr(++stack_pointer_));
+  return mapper_->Get(StackAddr(++stack_pointer_));
 }
 uint16_t Cpu6502::PopStack16() {
   // Value was stored little-endian in top-down stack, so get LSB then MSB
@@ -297,7 +294,7 @@ void Cpu6502::DbgStack() {
   for (int i = 0x0100; i <= 0x01FF; i += 0x10) {
     DBG("\nCPU[%03X]: ", i);
     for (int j = 0; j < 0x10; j++) {
-      DBG("%#04x ", memory_view_->Get(i + j));
+      DBG("%#04x ", mapper_->Get(i + j));
     }
   }
   DBG("\n");
@@ -331,7 +328,7 @@ void Cpu6502::JMP(AddressingMode mode) {
 void Cpu6502::BRK(AddressingMode mode) {
   PushStack16(program_counter_);  // PC is already +1 from reading instr.
   PushStack(p_ | 0b0011'0000);  // B=0b11
-  program_counter_ = memory_view_->Get16(0xFFFE);
+  program_counter_ = mapper_->Get16(0xFFFE);
   SetFlag(Flag::I, true);
   NTLOGPADSINGLE("BRK");
 }
@@ -356,7 +353,7 @@ void Cpu6502::STX(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   uint16_t addr = addrval.addr;
   NTLOGPAD("STX %s", AddrValString(addrval, mode).c_str());
-  memory_view_->Set(addr, x_);
+  mapper_->Set(addr, x_);
 }
 
 void Cpu6502::JSR(AddressingMode mode) {
@@ -432,7 +429,7 @@ void Cpu6502::STA(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   uint16_t addr = addrval.addr;
   NTLOGPAD("STA %s", AddrValString(addrval, mode).c_str());
-  memory_view_->Set(addr, a_);
+  mapper_->Set(addr, a_);
 }
 
 void Cpu6502::BIT(AddressingMode mode) {
@@ -701,7 +698,7 @@ void Cpu6502::LSR(AddressingMode mode) {
   } else {
     initial_val = addrval.val;
     result = initial_val >> 1;
-    memory_view_->Set(addrval.addr, result);
+    mapper_->Set(addrval.addr, result);
   }
   SetFlag(Flag::C, Bit(0, initial_val));
   SetFlag(Flag::Z, result == 0);
@@ -721,7 +718,7 @@ void Cpu6502::ASL(AddressingMode mode) {
   } else {
     initial_val = addrval.val;
     result = initial_val << 1;
-    memory_view_->Set(addrval.addr, result);
+    mapper_->Set(addrval.addr, result);
   }
   SetFlag(Flag::C, Bit(7, initial_val));
   SetFlag(Flag::Z, result == 0);
@@ -743,7 +740,7 @@ void Cpu6502::ROR(AddressingMode mode) {
     initial_val = addrval.val;
     result = initial_val >> 1;
     result = SetBit(7, result, GetFlag(Flag::C));
-    memory_view_->Set(addrval.addr, result);
+    mapper_->Set(addrval.addr, result);
   }
   SetFlag(Flag::C, Bit(0, initial_val));
   SetFlag(Flag::Z, result == 0);
@@ -765,7 +762,7 @@ void Cpu6502::ROL(AddressingMode mode) {
     initial_val = addrval.val;
     result = initial_val << 1;
     result = SetBit(0, result, GetFlag(Flag::C));
-    memory_view_->Set(addrval.addr, result);
+    mapper_->Set(addrval.addr, result);
   }
   SetFlag(Flag::C, Bit(7, initial_val));
   SetFlag(Flag::Z, result == 0);
@@ -776,15 +773,15 @@ void Cpu6502::STY(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   uint16_t addr = addrval.addr;
   NTLOGPAD("STY %s", AddrValString(addrval, mode).c_str());
-  memory_view_->Set(addr, y_);
+  mapper_->Set(addr, y_);
 }
 
 void Cpu6502::INC(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   uint16_t addr = addrval.addr;
   NTLOGPAD("INC %s", AddrValString(addrval, mode).c_str());
-  uint8_t result = memory_view_->Get(addr) + 1;
-  memory_view_->Set(addr, result);
+  uint8_t result = mapper_->Get(addr) + 1;
+  mapper_->Set(addr, result);
   SetFlag(Flag::Z, result == 0);
   SetFlag(Flag::N, !Pos(result));
 }
@@ -793,8 +790,8 @@ void Cpu6502::DEC(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   uint16_t addr = addrval.addr;
   NTLOGPAD("DEC %s", AddrValString(addrval, mode).c_str());
-  uint8_t result = memory_view_->Get(addr) - 1;
-  memory_view_->Set(addr, result);
+  uint8_t result = mapper_->Get(addr) - 1;
+  mapper_->Set(addr, result);
   SetFlag(Flag::Z, result == 0);
   SetFlag(Flag::N, !Pos(result));
 }
@@ -824,7 +821,7 @@ void Cpu6502::UN_SAX(AddressingMode mode) {
   uint16_t addr = addrval.addr;
   cycle_ += addrval.page_crossed;
   NTLOGPAD("SAX %s", AddrValString(addrval, mode).c_str());
-  memory_view_->Set(addr, a_ & x_);
+  mapper_->Set(addr, a_ & x_);
 }
 
 void Cpu6502::UN_SBC(AddressingMode mode) {
@@ -837,8 +834,8 @@ void Cpu6502::UN_DCP(AddressingMode mode) {
   cycle_ += addrval.page_crossed;
   NTLOGPAD("DCP %s", AddrValString(addrval, mode).c_str());
   // DEC then CMP the value.
-  uint8_t result = memory_view_->Get(addr) - 1;
-  memory_view_->Set(addr, result);
+  uint8_t result = mapper_->Get(addr) - 1;
+  mapper_->Set(addr, result);
   SetFlag(Flag::C, a_ >= result);
   SetFlag(Flag::Z, a_ == result);
   SetFlag(Flag::N, !Pos(a_ - result));
@@ -851,8 +848,8 @@ void Cpu6502::UN_ISB(AddressingMode mode) {
   NTLOGPAD("ISB %s", AddrValString(addrval, mode).c_str());
 
   // INC then SBC the value.
-  uint8_t val = memory_view_->Get(addr) + 1;
-  memory_view_->Set(addr, val);
+  uint8_t val = mapper_->Get(addr) + 1;
+  mapper_->Set(addr, val);
 
   val = ~val;
   uint16_t new_a = a_ + val + GetFlag(Flag::C);
@@ -876,7 +873,7 @@ void Cpu6502::UN_SLO(AddressingMode mode) {
   // ASL val then ORA it into A.
   uint8_t initial_val = addrval.val;
   uint8_t result = initial_val << 1;
-  memory_view_->Set(addrval.addr, result);
+  mapper_->Set(addrval.addr, result);
 
   a_ |= result;
   SetFlag(Flag::C, Bit(7, initial_val));
@@ -892,7 +889,7 @@ void Cpu6502::UN_RLA(AddressingMode mode) {
   uint8_t initial_val = addrval.val;
   uint8_t result = initial_val << 1;
   result = SetBit(0, result, GetFlag(Flag::C));
-  memory_view_->Set(addrval.addr, result);
+  mapper_->Set(addrval.addr, result);
 
   a_ &= result;
   SetFlag(Flag::C, Bit(7, initial_val));
@@ -907,7 +904,7 @@ void Cpu6502::UN_SRE(AddressingMode mode) {
   // LSR val then EOR it into A.
   uint8_t initial_val = addrval.val;
   uint8_t result = initial_val >> 1;
-  memory_view_->Set(addrval.addr, result);
+  mapper_->Set(addrval.addr, result);
 
   a_ ^= result;
   SetFlag(Flag::C, Bit(0, initial_val));
@@ -923,7 +920,7 @@ void Cpu6502::UN_RRA(AddressingMode mode) {
   uint8_t initial_val = addrval.val;
   uint8_t result = initial_val >> 1;
   result = SetBit(7, result, GetFlag(Flag::C));
-  memory_view_->Set(addrval.addr, result);
+  mapper_->Set(addrval.addr, result);
   SetFlag(Flag::C, Bit(0, initial_val));
 
   uint16_t new_a = a_ + result + GetFlag(Flag::C);
@@ -975,7 +972,7 @@ Cpu6502::AddrVal Cpu6502::NextAddrVal(AddressingMode mode, bool unofficial) {
   }
   AddrVal addrval;
   addrval.addr = NextAddr(mode, &addrval.page_crossed);
-  addrval.val = memory_view_->Get(addrval.addr);
+  addrval.val = mapper_->Get(addrval.addr);
   if (unofficial) { NTLOG("*"); } else { NTLOG(" "); }
   return addrval;
 }
@@ -987,11 +984,11 @@ std::string Cpu6502::AddrValString(AddrVal addrval, AddressingMode mode, bool is
     case AddressingMode::kZeroPage:
       return string_format("$%02X = %02X", addrval.addr, addrval.val);
     case AddressingMode::kZeroPageX: {
-      uint8_t target = memory_view_->Get(program_counter_ - 1);
+      uint8_t target = mapper_->Get(program_counter_ - 1);
       return string_format("$%02X,X @ %02X = %02X", target, addrval.addr, addrval.val);
     }
     case AddressingMode::kZeroPageY: {
-      uint8_t target = memory_view_->Get(program_counter_ - 1);
+      uint8_t target = mapper_->Get(program_counter_ - 1);
       return string_format("$%02X,Y @ %02X = %02X", target, addrval.addr, addrval.val);
     }
     case AddressingMode::kAbsolute:
@@ -1002,24 +999,24 @@ std::string Cpu6502::AddrValString(AddrVal addrval, AddressingMode mode, bool is
         return string_format("$%04X = %02X", addrval.addr, addrval.val);
       }
     case AddressingMode::kAbsoluteX: {
-      uint16_t target = memory_view_->Get16(program_counter_ - 2);
+      uint16_t target = mapper_->Get16(program_counter_ - 2);
       return string_format("$%04X,X @ %04X = %02X", target, addrval.addr, addrval.val);
     }
     case AddressingMode::kAbsoluteY: {
-      uint16_t target = memory_view_->Get16(program_counter_ - 2);
+      uint16_t target = mapper_->Get16(program_counter_ - 2);
       return string_format("$%04X,Y @ %04X = %02X", target, addrval.addr, addrval.val);
     }
     case AddressingMode::kIndirectX: {
-      uint8_t target = memory_view_->Get(program_counter_ - 1);
+      uint8_t target = mapper_->Get(program_counter_ - 1);
       return string_format("($%02X,X) @ %02X = %04X = %02X", target, (target + x_) % 0x100, addrval.addr, addrval.val);
     }
     case AddressingMode::kIndirectY: {
-      uint8_t target = memory_view_->Get(program_counter_ - 1);
+      uint8_t target = mapper_->Get(program_counter_ - 1);
       uint16_t indirect = addrval.addr - y_;
       return string_format("($%02X),Y = %04X @ %04X = %02X", target, indirect, addrval.addr, addrval.val);
     }
     case AddressingMode::kAbsoluteIndirect: {
-      uint16_t target = memory_view_->Get16(program_counter_ - 2);
+      uint16_t target = mapper_->Get16(program_counter_ - 2);
       return string_format("($%04X) = %04X", target, addrval.addr);
     }
     case AddressingMode::kRelative:

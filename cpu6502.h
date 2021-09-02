@@ -6,7 +6,6 @@
 #include "common.h"
 #include "mapper.h"
 #include "ppu.h"
-#include "memory_view.h"
 
 // Implements the NES's MOS 6502 CPU.
 class Cpu6502 {
@@ -174,11 +173,8 @@ class Cpu6502 {
 
     std::unique_ptr<Ppu> ppu_;
 
-    // Todo pass ptr to this and internal ram into a MemoryView class. NOTE: This needs to come after ppu_
+    // NOTE: This needs to be last!
     std::unique_ptr<Mapper> mapper_;
-
-    // NOTE: This needs to be last
-    std::unique_ptr<MemoryView> memory_view_;
 
     /// Registers
     uint8_t a_;

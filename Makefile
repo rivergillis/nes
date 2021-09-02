@@ -7,8 +7,8 @@ CXXFLAGS=-O2 -c --std=c++17 -Wall $(SDL2CFLAGS) -I$(INC_DIR) -D DEBUG $(TEST_DEF
 # Load dynamic libs here
 LDFLAGS=-L/opt/homebrew/lib -lSDL2
 
-nes: main.o image.o sdl_viewer.o sdl_timer.o cpu6502.o mappers/nrom_mapper.o memory_view.o ppu.o
-	$(CXX) $(LDFLAGS) -o nes main.o image.o sdl_viewer.o sdl_timer.o cpu6502.o mappers/nrom_mapper.o memory_view.o ppu.o
+nes: main.o image.o sdl_viewer.o sdl_timer.o cpu6502.o mappers/nrom_mapper.o mapper.o ppu.o
+	$(CXX) $(LDFLAGS) -o nes main.o image.o sdl_viewer.o sdl_timer.o cpu6502.o mappers/nrom_mapper.o mapper.o ppu.o
 
 main.o: main.cpp
 	$(CXX) $(CXXFLAGS) main.cpp
@@ -28,8 +28,8 @@ sdl_timer.o: sdl_timer.cpp sdl_timer.h
 cpu6502.o: cpu6502.cpp cpu6502.h
 	$(CXX) $(CXXFLAGS) cpu6502.cpp
 
-memory_view.o: memory_view.cpp memory_view.h
-	$(CXX) $(CXXFLAGS) memory_view.cpp
+mapper.o: mapper.cpp mapper.h
+	$(CXX) $(CXXFLAGS) mapper.cpp
 
 ppu.o: ppu.cpp ppu.h
 	$(CXX) $(CXXFLAGS) ppu.cpp
