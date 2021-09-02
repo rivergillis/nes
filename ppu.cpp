@@ -133,6 +133,12 @@ uint8_t Ppu::GetPPUDATA() {
   return res;
 }
 
+void Ppu::SetOAMDMA(uint8_t* data) {
+  // Upload arbitrary data to the PPU.
+  assert(data);
+  memcpy(oam_, data, 256);
+}
+
 void Ppu::DbgChr() {
   for (int i = 0x0000; i < chr_size_; i += 0x10) {
     DBG("\nPPU[%03X]: ", i);

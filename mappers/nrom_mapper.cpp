@@ -87,7 +87,29 @@ uint16_t NromMapper::Set(uint16_t addr, uint8_t val, uint64_t current_cycle) {
         throw std::runtime_error("Invalid PPU addr -- default.");
     }
   } else if (addr == 0x4014) {  // OAMDMA
-    throw std::runtime_error("UNIMPLEMENTED OAM DMA (write $4014");
+    // TODO: Make this easier somehow. -> GetDataPointer() then just read/write there?
+    uint16_t new_addr = static_cast<uint16_t>(val) << 8;
+    uint8_t* data = nullptr;
+    {
+      if (new_addr < 0x2000) {
+        data = cpu_ram_ + (new_addr % 0x800);
+      } else if (new_addr >= 0x2000 && new_addr < 0x8000) {
+        throw std::runtime_error("Invalid read addr for DMA");
+      } else if (new_addr < 0x8000) {
+        // I think providing 8k ram here is wrong, but it should be fine...
+        data = prg_ram_ + (new_addr - 0x6000);
+      } else if (new_addr < 0xC000) {
+        data = prg_rom_ + (new_addr - 0x8000);
+      } else {
+        if (prg_rom_size_ == 0x4000) {
+          // Provide a mirror for NROM-128
+          data = prg_rom_ + (new_addr - 0xC000);
+        } else {
+          data = prg_rom_ + (new_addr - 0x8000);
+        }
+      }
+    }
+    ppu_->SetOAMDMA(data);
     return 513 + (current_cycle % 2 == 0 ? 0 : 1);
   } else if (addr <= 0x4020) {
     apu_ram_[addr % 0x4000] = val;
