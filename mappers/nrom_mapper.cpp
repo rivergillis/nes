@@ -54,7 +54,7 @@ uint8_t NromMapper::Get(uint16_t addr) {
   }
 }
 
-void NromMapper::Set(uint16_t addr, uint8_t val) {
+uint16_t NromMapper::Set(uint16_t addr, uint8_t val, uint64_t current_cycle) {
   if (addr < 0x2000) {
     cpu_ram_[addr % 0x800] = val;
   } else if (addr < 0x4000) {
@@ -88,10 +88,12 @@ void NromMapper::Set(uint16_t addr, uint8_t val) {
     }
   } else if (addr == 0x4014) {  // OAMDMA
     throw std::runtime_error("UNIMPLEMENTED OAM DMA (write $4014");
+    return 513 + (current_cycle % 2 == 0 ? 0 : 1);
   } else if (addr <= 0x4020) {
     apu_ram_[addr % 0x4000] = val;
   } else if (addr < 0x6000 || addr >= 0x8000) {
     throw std::runtime_error("Invalid write addr");
   } 
   prg_ram_[addr - 0x6000] = val;
+  return 0;
 }

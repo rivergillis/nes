@@ -11,7 +11,8 @@ class Mapper {
     Mapper(uint8_t* cpu_ram, Ppu* ppu, uint8_t* apu_ram, uint8_t* prg_rom, size_t prg_rom_size);
 
     virtual uint8_t Get(uint16_t addr) = 0;
-    virtual void Set(uint16_t addr, uint8_t val) = 0;
+    // Returns 513 or 514 if we perform OAMDMA, else 0.
+    virtual uint16_t Set(uint16_t addr, uint8_t val, uint64_t current_cycle) = 0;
     uint16_t Get16(uint16_t addr, bool page_wrap = false);
 
     ::MapperId MapperId() { return mapper_id_; }

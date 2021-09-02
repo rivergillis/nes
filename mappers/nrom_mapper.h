@@ -11,7 +11,7 @@ class NromMapper : public Mapper {
     NromMapper(uint8_t* cpu_ram, Ppu* ppu, uint8_t* apu_ram_, uint8_t* prg_rom, size_t prg_rom_size);
 
     uint8_t Get(uint16_t addr) override;
-    void Set(uint16_t addr, uint8_t val) override;
+    uint16_t Set(uint16_t addr, uint8_t val, uint64_t current_cycle) override;
 };
 
 #endif

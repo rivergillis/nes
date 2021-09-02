@@ -18,6 +18,8 @@ namespace {
 #define NTLOGPAD(...) NTLOG("%-32s", string_format(__VA_ARGS__).c_str())
 #define NTLOGPADSINGLE(x) NTLOG("       "); NTLOGPAD("%s", x);
 
+#define WRITE(addr, val) cycle_ += mapper_->Set(addr, val, cycle_);
+
 uint16_t StackAddr(uint8_t sp) {
   return ((0x01 << 8) | sp);
 }
@@ -265,7 +267,7 @@ uint16_t Cpu6502::NextRelativeAddr(bool* page_crossed) {
 }
 
 void Cpu6502::PushStack(uint8_t val) {
-  mapper_->Set(StackAddr(stack_pointer_--), val);
+  WRITE(StackAddr(stack_pointer_--), val);
 }
 void Cpu6502::PushStack16(uint16_t val) {
   // Store MSB then LSB so that we can read back little-endian.
@@ -353,7 +355,7 @@ void Cpu6502::STX(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   uint16_t addr = addrval.addr;
   NTLOGPAD("STX %s", AddrValString(addrval, mode).c_str());
-  mapper_->Set(addr, x_);
+  WRITE(addr, x_);
 }
 
 void Cpu6502::JSR(AddressingMode mode) {
@@ -429,7 +431,7 @@ void Cpu6502::STA(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   uint16_t addr = addrval.addr;
   NTLOGPAD("STA %s", AddrValString(addrval, mode).c_str());
-  mapper_->Set(addr, a_);
+  WRITE(addr, a_);
 }
 
 void Cpu6502::BIT(AddressingMode mode) {
@@ -698,7 +700,7 @@ void Cpu6502::LSR(AddressingMode mode) {
   } else {
     initial_val = addrval.val;
     result = initial_val >> 1;
-    mapper_->Set(addrval.addr, result);
+    WRITE(addrval.addr, result);
   }
   SetFlag(Flag::C, Bit(0, initial_val));
   SetFlag(Flag::Z, result == 0);
@@ -718,7 +720,7 @@ void Cpu6502::ASL(AddressingMode mode) {
   } else {
     initial_val = addrval.val;
     result = initial_val << 1;
-    mapper_->Set(addrval.addr, result);
+    WRITE(addrval.addr, result);
   }
   SetFlag(Flag::C, Bit(7, initial_val));
   SetFlag(Flag::Z, result == 0);
@@ -740,7 +742,7 @@ void Cpu6502::ROR(AddressingMode mode) {
     initial_val = addrval.val;
     result = initial_val >> 1;
     result = SetBit(7, result, GetFlag(Flag::C));
-    mapper_->Set(addrval.addr, result);
+    WRITE(addrval.addr, result);
   }
   SetFlag(Flag::C, Bit(0, initial_val));
   SetFlag(Flag::Z, result == 0);
@@ -762,7 +764,7 @@ void Cpu6502::ROL(AddressingMode mode) {
     initial_val = addrval.val;
     result = initial_val << 1;
     result = SetBit(0, result, GetFlag(Flag::C));
-    mapper_->Set(addrval.addr, result);
+    WRITE(addrval.addr, result);
   }
   SetFlag(Flag::C, Bit(7, initial_val));
   SetFlag(Flag::Z, result == 0);
@@ -773,7 +775,7 @@ void Cpu6502::STY(AddressingMode mode) {
   AddrVal addrval = NextAddrVal(mode);
   uint16_t addr = addrval.addr;
   NTLOGPAD("STY %s", AddrValString(addrval, mode).c_str());
-  mapper_->Set(addr, y_);
+  WRITE(addr, y_);
 }
 
 void Cpu6502::INC(AddressingMode mode) {
@@ -781,7 +783,7 @@ void Cpu6502::INC(AddressingMode mode) {
   uint16_t addr = addrval.addr;
   NTLOGPAD("INC %s", AddrValString(addrval, mode).c_str());
   uint8_t result = mapper_->Get(addr) + 1;
-  mapper_->Set(addr, result);
+  WRITE(addr, result);
   SetFlag(Flag::Z, result == 0);
   SetFlag(Flag::N, !Pos(result));
 }
@@ -791,7 +793,7 @@ void Cpu6502::DEC(AddressingMode mode) {
   uint16_t addr = addrval.addr;
   NTLOGPAD("DEC %s", AddrValString(addrval, mode).c_str());
   uint8_t result = mapper_->Get(addr) - 1;
-  mapper_->Set(addr, result);
+  WRITE(addr, result);
   SetFlag(Flag::Z, result == 0);
   SetFlag(Flag::N, !Pos(result));
 }
@@ -821,7 +823,7 @@ void Cpu6502::UN_SAX(AddressingMode mode) {
   uint16_t addr = addrval.addr;
   cycle_ += addrval.page_crossed;
   NTLOGPAD("SAX %s", AddrValString(addrval, mode).c_str());
-  mapper_->Set(addr, a_ & x_);
+  WRITE(addr, a_ & x_);
 }
 
 void Cpu6502::UN_SBC(AddressingMode mode) {
@@ -835,7 +837,7 @@ void Cpu6502::UN_DCP(AddressingMode mode) {
   NTLOGPAD("DCP %s", AddrValString(addrval, mode).c_str());
   // DEC then CMP the value.
   uint8_t result = mapper_->Get(addr) - 1;
-  mapper_->Set(addr, result);
+  WRITE(addr, result);
   SetFlag(Flag::C, a_ >= result);
   SetFlag(Flag::Z, a_ == result);
   SetFlag(Flag::N, !Pos(a_ - result));
@@ -849,7 +851,7 @@ void Cpu6502::UN_ISB(AddressingMode mode) {
 
   // INC then SBC the value.
   uint8_t val = mapper_->Get(addr) + 1;
-  mapper_->Set(addr, val);
+  WRITE(addr, val);
 
   val = ~val;
   uint16_t new_a = a_ + val + GetFlag(Flag::C);
@@ -873,7 +875,7 @@ void Cpu6502::UN_SLO(AddressingMode mode) {
   // ASL val then ORA it into A.
   uint8_t initial_val = addrval.val;
   uint8_t result = initial_val << 1;
-  mapper_->Set(addrval.addr, result);
+  WRITE(addrval.addr, result);
 
   a_ |= result;
   SetFlag(Flag::C, Bit(7, initial_val));
@@ -889,7 +891,7 @@ void Cpu6502::UN_RLA(AddressingMode mode) {
   uint8_t initial_val = addrval.val;
   uint8_t result = initial_val << 1;
   result = SetBit(0, result, GetFlag(Flag::C));
-  mapper_->Set(addrval.addr, result);
+  WRITE(addrval.addr, result);
 
   a_ &= result;
   SetFlag(Flag::C, Bit(7, initial_val));
@@ -904,7 +906,7 @@ void Cpu6502::UN_SRE(AddressingMode mode) {
   // LSR val then EOR it into A.
   uint8_t initial_val = addrval.val;
   uint8_t result = initial_val >> 1;
-  mapper_->Set(addrval.addr, result);
+  WRITE(addrval.addr, result);
 
   a_ ^= result;
   SetFlag(Flag::C, Bit(0, initial_val));
@@ -920,7 +922,7 @@ void Cpu6502::UN_RRA(AddressingMode mode) {
   uint8_t initial_val = addrval.val;
   uint8_t result = initial_val >> 1;
   result = SetBit(7, result, GetFlag(Flag::C));
-  mapper_->Set(addrval.addr, result);
+  WRITE(addrval.addr, result);
   SetFlag(Flag::C, Bit(0, initial_val));
 
   uint16_t new_a = a_ + result + GetFlag(Flag::C);
