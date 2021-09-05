@@ -28,6 +28,11 @@ class Ppu {
     void SetPPUDATA(uint8_t val);
     uint8_t GetPPUDATA();
     void SetOAMDMA(uint8_t* data);
+
+    // Set the contents of the latch.
+    void SetLatch(uint8_t val) { latch_ = val; }
+    // Returns the contents of the latch. Used when reading write-only ports.
+    uint8_t GetLatch() { return latch_; }
   
     void DbgChr();
 
@@ -41,7 +46,7 @@ class Ppu {
     uint8_t palette_ram_[32] = {};
     uint8_t oam_[256] = {};
 
-    // TODO: Emulate the latch.
+    uint8_t latch_ = 0;
 
     bool next_ppuscroll_write_is_x_ = true; // otherwise y
     bool next_ppuaddr_write_is_msb_ = true; // otherwise lsb

@@ -7,8 +7,8 @@ CXXFLAGS=-O2 -c --std=c++17 -Wall $(SDL2CFLAGS) -I$(INC_DIR) -D DEBUG $(TEST_DEF
 # Load dynamic libs here
 LDFLAGS=-L/opt/homebrew/lib -lSDL2
 
-nes: main.o image.o sdl_viewer.o sdl_timer.o cpu6502.o mappers/nrom_mapper.o mapper.o ppu.o
-	$(CXX) $(LDFLAGS) -o nes main.o image.o sdl_viewer.o sdl_timer.o cpu6502.o mappers/nrom_mapper.o mapper.o ppu.o
+nes2x: main.o image.o sdl_viewer.o sdl_timer.o cpu6502.o mappers/nrom_mapper.o mapper.o ppu.o
+	$(CXX) $(LDFLAGS) -o nes2x main.o image.o sdl_viewer.o sdl_timer.o cpu6502.o mappers/nrom_mapper.o mapper.o ppu.o
 
 main.o: main.cpp
 	$(CXX) $(CXXFLAGS) main.cpp
@@ -39,7 +39,7 @@ SUBDIR = mappers
 # mappers_dir:
 # 	$(MAKE) -C $(SUBDIR)
 clean:
-	$(RM) nes *.o
+	$(RM) nes2x *.o
 	$(RM) mappers/*.o
 
 

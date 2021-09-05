@@ -63,32 +63,35 @@ void Ppu::SetPpuStatusLSBits(uint8_t val) {
 
 void Ppu::SetCTRL(uint8_t val) {
   ppuctrl_ = val;
-  SetPpuStatusLSBits(val);
+  SetLatch(val);
 }
 
 void Ppu::SetMASK(uint8_t val) {
   ppumask_= val;
-  SetPpuStatusLSBits(val);
+  SetLatch(val);
 }
 
 uint8_t Ppu::GetSTATUS() {
+  SetPpuStatusLSBits(latch_);
   uint8_t res = ppustatus_;
   SetBit(7, ppustatus_, 0); // reading clears bit 7 after read.
   // TODO: Set bits 5, 6, 7. Potentially do this elsewhere.
-  // TODO: this should reset the address latch, whatever that means
+  SetLatch(res);
   return res;
 }
 
 void Ppu::SetOAMADDR(uint8_t val) {
   oamaddr_ = val;
-  SetPpuStatusLSBits(val);
+  SetLatch(val);
 }
 
 uint8_t Ppu::GetOAMDATA() {
   // re: https://wiki.nesdev.com/w/index.php?title=PPU_registers
   // > reads during vertical or forced blanking return the value from OAM at that address but do not increment
   // so should we increment otherwise?
-  return oam_[oamaddr_];
+  uint8_t val = oam_[oamaddr_];
+  SetLatch(val);
+  return val;
 }
 
 void Ppu::SetOAMDATA(uint8_t val) {
@@ -96,6 +99,7 @@ void Ppu::SetOAMDATA(uint8_t val) {
   // TODO: ignore writes/increments during rendering
   //  (on the pre-render line and the visible lines 0-239, provided either sprite or background rendering is enabled) 
   oam_[oamaddr_++] = val;
+  SetLatch(val);
 }
 
 void Ppu::SetPPUSCROLL(uint8_t val) {
@@ -105,7 +109,7 @@ void Ppu::SetPPUSCROLL(uint8_t val) {
     ppuscroll_y_ = val;
   }
   next_ppuscroll_write_is_x_ = !next_ppuscroll_write_is_x_;
-  SetPpuStatusLSBits(val);
+  SetLatch(val);
 }
 
 void Ppu::SetPPUADDR(uint8_t val) {
@@ -117,19 +121,21 @@ void Ppu::SetPPUADDR(uint8_t val) {
     ppuaddr_ |= val;
   }
   next_ppuaddr_write_is_msb_ = !next_ppuaddr_write_is_msb_;
-  SetPpuStatusLSBits(val);
+  SetLatch(val);
 }
 
 void Ppu::SetPPUDATA(uint8_t val) {
   SetMMAP(ppuaddr_, val);
   uint8_t inc_amt = Bit(2, GetMMAP(0x2000));
   ppuaddr_ += inc_amt;
+  SetLatch(val);
 }
 
 uint8_t Ppu::GetPPUDATA() {
   uint8_t res = GetMMAP(ppuaddr_);
   uint8_t inc_amt = Bit(2, GetMMAP(0x2000));
   ppuaddr_ += inc_amt;
+  SetLatch(res);
   return res;
 }
 

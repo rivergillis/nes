@@ -6,8 +6,8 @@ NC='\033[0m' # No Color
 
 
 make clean
-make nes TEST_DEFINES="-U DEBUG -D NESTEST"
-./nes 2>&1 | tee test/out.log
+make nes2x TEST_DEFINES="-U DEBUG -D NESTEST"
+./nes2x /Users/river/code/nes/roms/nestest.nes 2>&1 | tee test/out.log
 
 ## Ignore PPU:
 sed 's/PPU:.*C/CYC/g' test/out.log > test/out-noppu.log

@@ -15,22 +15,21 @@ uint8_t NromMapper::Get(uint16_t addr) {
     uint16_t ppu_addr = 0x2000 + (addr % 8);  // get mirror of $2000-$2007
     switch (ppu_addr) {
       case 0x2000:  // PPUCTRL
-        throw std::runtime_error("Invalid CPU->PPU addr -- cannot read PPUCTRL.");
+        return ppu_->GetLatch();
       case 0x2001:  // PPUMASK
-        throw std::runtime_error("Invalid CPU->PPU addr -- cannot read PPUMASK.");
+        return ppu_->GetLatch();
       case 0x2002:  // PPUSTATUS
         return ppu_->GetSTATUS();
       case 0x2003:  // OAMADDR
-        throw std::runtime_error("Invalid CPU->PPU addr -- cannot read OAMADDR.");
+        return ppu_->GetLatch();
       case 0x2004:  // OAMDATA
         return ppu_->GetOAMDATA();
-        break;
       case 0x2005:  // PPUSCROLL
-        throw std::runtime_error("Invalid CPU->PPU addr -- cannot read PPUSCROLL.");
+        return ppu_->GetLatch();
       case 0x2006:  // PPUADDR
-        throw std::runtime_error("Invalid CPU->PPU addr -- cannot read PPUADDR.");
+        return ppu_->GetLatch();
       case 0x2007:  // PPUDATA
-        throw std::runtime_error("unimplemented PPUDATA read");
+        return ppu_->GetLatch();
         break;
       default:
         throw std::runtime_error("Invalid CPU->PPU addr -- default.");
@@ -67,7 +66,8 @@ uint16_t NromMapper::Set(uint16_t addr, uint8_t val, uint64_t current_cycle) {
         ppu_->SetMASK(val);
         break;
       case 0x2002:  // PPUSTATUS
-        throw std::runtime_error("Invalid CPU->PPU addr -- cannot write PPUSTATUS.");
+        ppu_->SetLatch(val);
+        break;
       case 0x2003:  // OAMADDR
         ppu_->SetOAMADDR(val);
         break;
@@ -78,10 +78,10 @@ uint16_t NromMapper::Set(uint16_t addr, uint8_t val, uint64_t current_cycle) {
         ppu_->SetPPUSCROLL(val);
         break;
       case 0x2006:  // PPUADDR
-        throw std::runtime_error("unimplemented PPUADDR write");
+        ppu_->SetPPUADDR(val);
         break;
       case 0x2007:  // PPUDATA
-        throw std::runtime_error("unimplemented PPUDATA write");
+        ppu_->SetPPUDATA(val);
         break;
       default:
         throw std::runtime_error("Invalid PPU addr -- default.");
