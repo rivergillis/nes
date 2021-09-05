@@ -23,7 +23,7 @@ void Run(const std::string& rom_path, uint64_t num_instrs) {
 
 std::string GetFileName(int argc, char* argv[]) {
   if (argc < 2) {
-    throw std::runtime_error("Usage: nes2x path/to/file [optional: num_instrs]");
+    return kTestRomPath;
   }
   return std::string(argv[1]);
 }
