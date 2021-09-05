@@ -1,14 +1,15 @@
 PPU every 113.667 CPU (3 CPU = 1 PPU)
 
-113.667	to 113 -> added 113
-227.333	to 227 -> added 114
-341.000  to 341 -> added 114
-454.667  to 454 -> added 113
-568.333 to 568. -> added 114
-682.000 to 682. -> added 114
-795.667 to 795  -> added 113
+113.667	to 113 -> added 113   or to 114 -> added 114
+227.333	to 227 -> added 114   or to 228 -> added 114
+341.000  to 341 -> added 114  or to 341 -> added 113
+454.667  to 454 -> added 113  or to 455 -> added 114
+568.333 to 568. -> added 114  or to 569 -> added 114
+682.000 to 682. -> added 114  or to 682 -> added 113
+795.667 to 795  -> added 113  or to 796 -> added 114
 
 So pattern is [113, 114, 114]
+Alternate pattern using ceil is [114, 114, 113] -> this is probably better
 
 CPU:
 Next PPU at cycle 0+113 (pattern 0)
