@@ -1,0 +1,28 @@
+PPU every 113.667 CPU (3 CPU = 1 PPU)
+
+113.667	to 113 -> added 113
+227.333	to 227 -> added 114
+341.000  to 341 -> added 114
+454.667  to 454 -> added 113
+568.333 to 568. -> added 114
+682.000 to 682. -> added 114
+795.667 to 795  -> added 113
+
+So pattern is [113, 114, 114]
+
+CPU:
+Next PPU at cycle 0+113 (pattern 0)
+1 	1
+1	  2
+20	22
+80	102
+20	122
+PPU update. FFWD next PPU at cycle 113+114=227 (pattern 1)
+30	152
+500	652
+PPU update. FFWD next PPU at cycle 227+114=341 (pattern 2)
+PPU update. FFWD next PPU at cycle 341+113=454 (pattern 0)
+PPU update. FFWD next PPU at cycle 454+114=568 (pattern 1)
+PPU update. FFWD next PPU at cycle 568+114=682 (pattern 2)
+3   655
+...
