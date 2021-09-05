@@ -35,6 +35,7 @@
 .vscode
 roms
 nes
+nes2x
 
 test/out.log
 test/out-noppu.log
