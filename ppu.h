@@ -91,15 +91,12 @@ class Ppu {
 //   0x2000 - 0x27FF (size 0x800) then mirrored at 0x2800 - 0x2FFF
 // 0x3000 - 0x3EFF is a mirror of 0x2000 - 0x2EFF (size 0xF00)
 // 0x3F00 - 0x3F1F is pallete memory
-// 0x32F0 - 0x3FFF are mirros of 0x3F00 - 0x3F1F
+// 0x32F0 - 0x3FFF are mirrors of 0x3F00 - 0x3F1F
 
-// ppuctrl
-  // base_nametable_addr_ = 0x2000 + (0x400 * (Bit(1, val) + Bit(0, val)));  // somehow this is X/Y's MSB
-  // vram_increment_down_ = Bit(2, val);
-  // sprite_pattern_table_addr_8x8_ = Bit(3, val) ? 0x1000 : 0x0000;
-  // bg_pattern_table_addr_ = Bit(4, val) ? 0x1000 : 0x0000;
-  // sprite_size_8x16_ = Bit(5, val);
-  // master_ = Bit(6, val);
-  // generate_nmi_ = Bit(7, val);
+
+// PPU render 262 scanlines per frame. 240 scanlines are visible (224 after overscan).
+// Scanline: 256 px wide. Each cycle is a px [0..255].
+//    Hblank from [256..340]. A "scanline" includes hblank.
+//    So each scanline is 341 PPU cycles and 113.667 CPU cycles.
 
 #endif // PPU_H_
