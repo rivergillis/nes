@@ -33,6 +33,13 @@ void Image::SetAll(uint8_t value) {
   std::memset(data_, value, rows_ * RowWidth());
 }
 
+Image::CropInfo Image::GetCroppedView(int first_row, int num_rows) {
+  if (first_row < 0 || first_row >= rows_ || (first_row + num_rows) > rows_ || num_rows < 0) {
+    throw std::runtime_error("Bad bound on GetCroppedView");
+  }
+  return {Row(first_row), num_rows * RowWidth(), RowWidth()};
+}
+
 Image::~Image() {
   free(data_);
 }

@@ -3,6 +3,14 @@
 #include "common.h"
 #include "image.h"
 
+namespace {
+
+bool IsVisibleScanline(uint16_t scanline) {
+  return scanline <= 239;
+}
+
+} // namespace
+
 Ppu::Ppu(uint8_t* chr, size_t chr_size) {
   if (chr == nullptr) {
     chr_ = nullptr;
@@ -18,6 +26,15 @@ Ppu::Ppu(uint8_t* chr, size_t chr_size) {
 
 Ppu::~Ppu() {
   free(chr_);
+}
+
+void Ppu::Update() {
+  scanline_++;
+  cycle_ += 341;
+
+  if (IsVisibleScanline(scanline_)) {
+    RenderScanline(scanline_);
+  }
 }
 
 
@@ -147,7 +164,7 @@ void Ppu::SetOAMDMA(uint8_t* data) {
   memcpy(oam_, data, 256);
 }
 
-void Ppu::Render() {
+void Ppu::RenderScanline(int line) {
   throw std::runtime_error("Cannot render yet!");
 }
 

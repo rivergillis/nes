@@ -7,14 +7,21 @@
 // https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
 // https://www.reddit.com/r/EmuDev/comments/7k08b9/not_sure_where_to_start_with_the_nes_ppu/
 
+// Per-scanline rendering engine.
+// PPU render 262 scanlines per frame. 240 scanlines are visible (224 after overscan).
+
 constexpr int kFrameX = 256;
-constexpr int kFrameY = 224;
+constexpr int kFrameY = 240;
 
 class Ppu {
   public:
     // Copies chr into chr_  if not null.
     Ppu(uint8_t* chr, size_t chr_size);
     ~Ppu();
+
+    // Runs a scanline's worth of cycles.
+    // TODO: Call every 113.667 CPU cycles? (make sure to call 4 or more? for OAMDMA)
+    void Update();
 
     uint8_t GetMMAP(uint16_t addr);
     void SetMMAP(uint16_t addr, uint8_t val);
@@ -38,14 +45,15 @@ class Ppu {
     // Returns the contents of the latch. Used when reading write-only ports.
     uint8_t GetLatch() { return latch_; }
 
-    // Renders an image to frame_buffer_.
-    void Render();
     Image* FrameBuffer() { return frame_buffer_.get(); }
   
     void DbgChr();
 
   private:
     void SetPpuStatusLSBits(uint8_t val); // sets bits 0-4 of ppustatus
+
+    // Writes to the frame_buffer_.
+    void RenderScanline(int line);
 
     uint8_t* chr_;  // CHR_ROM or CHR_RAM -> pattern tables?
     size_t chr_size_;
@@ -67,8 +75,14 @@ class Ppu {
     uint8_t ppuscroll_y_ = 0;
     uint16_t ppuaddr_ = 0;
 
-    // 256x224 RGB24 frame buffer. We render to this, then upload to the GPU for display.
-    // The original picture is 256x240 but we ignore the overscan.
+    // Current cycle number. Cycle 7 means 7 cycles have elapsed.
+    // 1 CPU cycle = 3 PPU cycles. Each scanline is 341 PPU cycles (113.667 CPU cycles).
+    uint64_t cycle_ = 0;
+    // Current scanline. May not be a visible scanline.
+    uint16_t scanline_ = 0;
+
+    // 256x240 RGB24 frame buffer. We render to this, then upload to the GPU for display.
+    // After overscan we crop to 256x224 for display.
     std::unique_ptr<Image> frame_buffer_;
 };
 

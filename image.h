@@ -21,10 +21,19 @@ class Image {
     void SetPixel(int col, int row, const Pixel& pix);
     void SetAll(uint8_t value);
 
+    // Gets a cropped set of rows. Useful for overscan.
+    //  GetCroppedView(0, 240) will give you data for 240 rows.
+    struct CropInfo {
+      uint8_t* data;
+      size_t length;     // length of data
+      size_t row_width;  // unchanged from Image::RowWidth
+    };
+    CropInfo GetCroppedView(int first_row, int num_rows);
+
     int Cols() { return cols_; }
     int Rows() { return rows_; }
     // Row width in bytes.
-    int RowWidth() { return cols_ * 3 * sizeof(uint8_t); }
+    size_t RowWidth() { return cols_ * 3 * sizeof(uint8_t); }
 
     // The size of the output buffer is exactly Rows() * RowWidth().
     uint8_t* Data() { return data_; }
