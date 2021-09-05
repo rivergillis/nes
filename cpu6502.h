@@ -184,8 +184,14 @@ class Cpu6502 {
     uint8_t p_;
     uint8_t stack_pointer_;
 
+    uint8_t ppu_update_pattern_position_ = 1;
+    // Trigger a PPU scanline's worth of updates once we reach this cycle.
+    // May trigger many times per CPU update for longer CPU updates (like DMA).
+    uint64_t next_ppu_update_at_ = 114;
+
     // Current cycle number. Cycle 7 means 7 cycles have elapsed.
     uint64_t cycle_ = 0;
+
 };
 
 // notes:

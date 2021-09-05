@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <functional>
+#include <array>
 
 #include "common.h"
 #include "mappers/nrom_mapper.h"
@@ -20,11 +21,14 @@ namespace {
 
 #define WRITE(addr, val) cycle_ += mapper_->Set(addr, val, cycle_);
 
+// How many CPU cycles to add to next_ppu_update_at_.
+const std::array<uint8_t, 3> kPpuUpdatePattern = {114, 114, 113};
+
 uint16_t StackAddr(uint8_t sp) {
   return ((0x01 << 8) | sp);
 }
 
-}
+} // namespace
 
 Cpu6502::Cpu6502(const std::string& file_path) {
   Reset(file_path);
@@ -49,6 +53,11 @@ void Cpu6502::RunCycle() {
       #ifdef NESTEST
       NTLOG("%s PPU:  0,  0 CYC:%llu\n", prev_flags.c_str(), prev_cycle);
       #endif
+  while (cycle_ >= next_ppu_update_at_) {
+    ppu_->Update();
+    next_ppu_update_at_ += kPpuUpdatePattern[ppu_update_pattern_position_];
+    ppu_update_pattern_position_ = (ppu_update_pattern_position_ + 1) % 3;
+  }
 }
 
 void Cpu6502::Reset(const std::string& file_path) {

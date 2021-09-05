@@ -20,7 +20,7 @@ class Ppu {
     ~Ppu();
 
     // Runs a scanline's worth of cycles.
-    // TODO: Call every 113.667 CPU cycles? (make sure to call 4 or more? for OAMDMA)
+    // TODO: Figure out HBlank
     void Update();
 
     uint8_t GetMMAP(uint16_t addr);
