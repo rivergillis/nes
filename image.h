@@ -1,9 +1,9 @@
-#ifndef C8_IMAGE_H_
-#define C8_IMAGE_H_
+#ifndef IMAGE_H_
+#define IMAGE_H_
 
 #include "common.h"
 
-// Monochrome image format.
+// RGB24 Image Format
 
 class Image {
   public:
@@ -11,35 +11,25 @@ class Image {
     Image(int cols, int rows);
     ~Image();
 
-    uint8_t* Row(int r);
+    uint8_t* Row(int row);
 
-    // Returns a pixel that can be changed.
-    uint8_t& At(int c, int r);
-    uint8_t& operator()(int c, int r) { return At(c, r); }
+    // Returns a pixel channel value that can be changed.
+    uint8_t& At(int col, int row, int channel);
+    uint8_t& operator()(int col, int row, int channel) { return At(col, row, channel); }
 
+    struct Pixel { uint8_t r; uint8_t g; uint8_t b; };
+    void SetPixel(int col, int row, const Pixel& pix);
     void SetAll(uint8_t value);
-
-    // XOR render sprite to image starting at top-left corner c,r.
-    // c,r must be within the image. Up to 1-byte of width and up
-    // to height rows will be rendered, depending on the image bounds.
-    // Returns whether or not any pixels were set to 0 by this operation.
-    bool XORSprite(int c, int r, int height, uint8_t* sprite);
 
     int Cols() { return cols_; }
     int Rows() { return rows_; }
+    // Row width in bytes.
+    int RowWidth() { return cols_ * 3 * sizeof(uint8_t); }
 
-    // The size of the allocated output buffer is exactly
-    // Cols() * Rows() * 3.
-    // Formatted interleaved RGBRGBRGB...
-    void CopyToRGB24(uint8_t* dst, int red_scale, int green_scale, int blue_scale);
-
-    void Print();
-    void DrawToStdout();
+    // The size of the output buffer is exactly Rows() * RowWidth().
+    uint8_t* Data() { return data_; }
 
   private:
-    // XOR a pixel with val. Returns true if the pixel was set to 0.
-    bool XOR(int c, int r, uint8_t val);
-
     int cols_;
     int rows_;
 

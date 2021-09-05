@@ -2,9 +2,13 @@
 #define PPU_H_
 
 #include "common.h"
+#include "image.h"
 
 // https://wiki.nesdev.com/w/images/d/d1/Ntsc_timing.png
 // https://www.reddit.com/r/EmuDev/comments/7k08b9/not_sure_where_to_start_with_the_nes_ppu/
+
+constexpr int kFrameX = 256;
+constexpr int kFrameY = 224;
 
 class Ppu {
   public:
@@ -33,13 +37,17 @@ class Ppu {
     void SetLatch(uint8_t val) { latch_ = val; }
     // Returns the contents of the latch. Used when reading write-only ports.
     uint8_t GetLatch() { return latch_; }
+
+    // Renders an image to frame_buffer_.
+    void Render();
+    Image* FrameBuffer() { return frame_buffer_.get(); }
   
     void DbgChr();
 
   private:
     void SetPpuStatusLSBits(uint8_t val); // sets bits 0-4 of ppustatus
 
-    uint8_t* chr_;  // CHR_ROM or CHR_RAM
+    uint8_t* chr_;  // CHR_ROM or CHR_RAM -> pattern tables?
     size_t chr_size_;
 
     uint8_t nametable_ram_[2048] = {}; // 2kB of VRAM
@@ -58,6 +66,10 @@ class Ppu {
     uint8_t ppuscroll_x_ = 0;
     uint8_t ppuscroll_y_ = 0;
     uint16_t ppuaddr_ = 0;
+
+    // 256x224 RGB24 frame buffer. We render to this, then upload to the GPU for display.
+    // The original picture is 256x240 but we ignore the overscan.
+    std::unique_ptr<Image> frame_buffer_;
 };
 
 // 0x0000 - 0x1FFF is pattern memory (CHR). Usually mapper can bank this.

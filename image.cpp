@@ -1,98 +1,36 @@
 #include "image.h"
 #include "common.h"
 
-#include <iostream>
-#include <iomanip>
-
 Image::Image(int cols, int rows) {
-  data_ = static_cast<uint8_t*>(std::malloc(cols * rows * sizeof(uint8_t)));
+  data_ = static_cast<uint8_t*>(std::malloc(cols * rows * 3 * sizeof(uint8_t)));
   cols_ = cols;
   rows_ = rows;
 }
 
-uint8_t* Image::Row(int r) {
-  if (r < 0 || r >= rows_) {
+uint8_t* Image::Row(int row) {
+  if (row < 0 || row >= rows_) {
     throw std::runtime_error("Row out of bounds.");
   }
-  return &data_[r * cols_];
+  return &data_[row * RowWidth()];
 }
 
-uint8_t& Image::At(int c, int r) {
-  if (c < 0 || c >= cols_) {
+uint8_t& Image::At(int col, int row, int channel) {
+  if (col < 0 || col >= cols_) {
     throw std::runtime_error("Column out of bounds.");
+  } else if (channel < 0 || channel > 2) {
+    throw std::runtime_error("Channel out of bounds.");
   }
-  return Row(r)[c];
+  return Row(row)[(col * 3) + channel];
+}
+
+void Image::SetPixel(int col, int row, const Pixel& pix) {
+  At(col, row,  0) = pix.r;
+  At(col, row,  1) = pix.g;
+  At(col, row,  2) = pix.b;
 }
 
 void Image::SetAll(uint8_t value) {
-  std::memset(data_, value, rows_ * cols_);
-}
-
-
-bool Image::XORSprite(int c, int r, int height, uint8_t* sprite) {
-  // Wrap around the screen as we draw.
-  bool pixel_was_disabled = false;
-  int dots = 0;
-  for (int y = 0; y < height; y++) {
-    int current_r = r + y;
-    while (current_r >= rows_) { current_r -= rows_; }
-    uint8_t sprite_byte = sprite[y];
-    DBG("%X ", sprite_byte);
-    for (int x = 0; x < 8; x++) {
-      int current_c = c + x;
-      while (current_c >= cols_) { current_c -= cols_; }
-      // Note: We scan from MSbit to LSbit
-      uint8_t sprite_val = (sprite_byte & (0x80 >> x)) >> (7-x);
-      if (sprite_val > 0) {
-        dots++;
-      }
-      pixel_was_disabled |= XOR(current_c, current_r, sprite_val);
-    }
-  }
-  DBG(" %d dots", dots);
-  return pixel_was_disabled;
-}
-
-bool Image::XOR(int c, int r, uint8_t val) {
-  uint8_t& current_val = At(c, r);
-  uint8_t prev_val = current_val;
-  current_val ^= val;
-  return current_val == 0 && prev_val > 0;
-}
-
- void Image::CopyToRGB24(uint8_t* dst, int red_scale, int green_scale, int blue_scale) {
-  int cols = Cols();
-  for (int row = 0; row < Rows(); row++) {
-    for (int col = 0; col < cols; col++) {
-      dst[(row * cols + col) * 3] = At(col, row) * red_scale;
-      dst[(row * cols + col) * 3 + 1] = At(col, row) * green_scale;
-      dst[(row * cols + col) * 3 + 2] = At(col, row) * blue_scale;
-    }
-  }
- }
-
-void Image::Print() {
-  for (int r = 0; r < rows_; r++) {
-    for (int c = 0; c < cols_; c++) {
-      std::cout << std::setfill('0') << std::setw(3) << static_cast<int>(At(c,r)) << " ";
-    }
-    std::cout << std::endl;
-  }
-  std::cout << std::endl;
-}
-
-void Image::DrawToStdout() {
-  for (int r = 0; r < rows_; r++) {
-    for (int c = 0; c < cols_; c++) {
-      if (At(c,r) > 0) {
-        std::cout << "X";
-      } else {
-        std::cout << " ";
-      }
-    }
-    std::cout << std::endl;
-  }
-  std::cout << std::endl;
+  std::memset(data_, value, rows_ * RowWidth());
 }
 
 Image::~Image() {

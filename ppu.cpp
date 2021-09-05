@@ -1,6 +1,7 @@
 #include "ppu.h"
 
 #include "common.h"
+#include "image.h"
 
 Ppu::Ppu(uint8_t* chr, size_t chr_size) {
   if (chr == nullptr) {
@@ -10,8 +11,9 @@ Ppu::Ppu(uint8_t* chr, size_t chr_size) {
     chr_size_ = chr_size;
     chr_ = (uint8_t*)malloc(chr_size_ * sizeof(uint8_t));
     memcpy(chr_, chr, chr_size_);
-    DBG("Created PPU with %llu byte CHR\n", static_cast<uint64_t>(chr_size));
   }
+  frame_buffer_ = std::make_unique<Image>(kFrameX, kFrameY);
+  DBG("Created PPU with %llu byte CHR\n", static_cast<uint64_t>(chr_size));
 }
 
 Ppu::~Ppu() {
@@ -143,6 +145,10 @@ void Ppu::SetOAMDMA(uint8_t* data) {
   // Upload arbitrary data to the PPU.
   assert(data);
   memcpy(oam_, data, 256);
+}
+
+void Ppu::Render() {
+  throw std::runtime_error("Cannot render yet!");
 }
 
 void Ppu::DbgChr() {
